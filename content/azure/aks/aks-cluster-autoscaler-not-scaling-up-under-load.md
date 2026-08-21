@@ -19,6 +19,9 @@ estimated_time_minutes: 10
 companies: []
 related_questions:
   - kubernetes-troubleshooting-crashloopbackoff-001
+  - azure-aks-autoscaler-node-pool-selection-001
+  - azure-aks-karpenter-style-provisioning-vs-cluster-autoscaler-001
+  - azure-aks-slow-vs-stuck-scale-up-during-incident-001
 status: published
 last_reviewed: 2026-08-19
 last_updated: 2026-08-19

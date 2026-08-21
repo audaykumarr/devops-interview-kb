@@ -17,7 +17,10 @@ tags:
   - rollback
 estimated_time_minutes: 10
 companies: []
-related_questions: []
+related_questions:
+  - cicd-deployment-strategies-canary-promotion-metrics-001
+  - cicd-deployment-strategies-schema-migration-impact-001
+  - cicd-deployment-strategies-when-prefer-blue-green-001
 status: published
 last_reviewed: 2026-08-21
 last_updated: 2026-08-21

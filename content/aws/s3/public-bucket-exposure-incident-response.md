@@ -20,6 +20,9 @@ estimated_time_minutes: 10
 companies: []
 related_questions:
   - aws-iam-least-privilege-migration-001
+  - aws-s3-public-write-exposure-response-difference-001
+  - aws-s3-block-public-access-vs-bucket-policy-001
+  - aws-s3-public-exposure-fast-alerting-design-001
 status: published
 last_reviewed: 2026-08-21
 last_updated: 2026-08-21

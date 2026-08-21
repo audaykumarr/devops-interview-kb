@@ -17,7 +17,10 @@ tags:
   - ci-cd
 estimated_time_minutes: 8
 companies: []
-related_questions: []
+related_questions:
+  - devsecops-pipeline-security-preexisting-backlog-001
+  - devsecops-pipeline-security-measuring-remediation-rate-001
+  - devsecops-pipeline-security-ci-scan-vs-precommit-hook-001
 status: published
 last_reviewed: 2026-08-21
 last_updated: 2026-08-21

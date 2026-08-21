@@ -15,7 +15,10 @@ tags:
   - troubleshooting
 estimated_time_minutes: 7
 companies: []
-related_questions: []
+related_questions:
+  - azure-pipelines-agents-self-hosted-vs-hosted-tradeoffs-001
+  - azure-pipelines-agents-fleet-consistency-over-time-001
+  - azure-pipelines-agents-fail-fast-missing-tool-001
 status: published
 last_reviewed: 2026-08-21
 last_updated: 2026-08-21

@@ -14,7 +14,10 @@ tags:
   - communication
 estimated_time_minutes: 6
 companies: []
-related_questions: []
+related_questions:
+  - behavioral-conflict-resolution-disagreeing-with-senior-001
+  - behavioral-conflict-resolution-changed-your-mind-001
+  - behavioral-conflict-resolution-when-to-escalate-001
 status: published
 last_reviewed: 2026-08-21
 last_updated: 2026-08-21

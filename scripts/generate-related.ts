@@ -10,6 +10,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { analyzeFollowUpCoverage, GAP_MATCH_THRESHOLD } from "./lib/content-gaps";
+import { buildFollowUpLinks } from "./lib/follow-up-links";
 import { loadValidatedCorpusOrExit } from "./lib/load-validated";
 import { suggestRelatedQuestions } from "./lib/related-suggestions";
 
@@ -42,9 +43,13 @@ function main(): void {
     )}\n`,
   );
 
+  const followUpLinks = buildFollowUpLinks(records, followUps);
+  writeFileSync(join(outDir, "follow-up-links.json"), `${JSON.stringify(followUpLinks, null, 2)}\n`);
+
   console.log(
-    `✔ Wrote generated/related-suggestions.json (${suggestions.length} question(s) with suggestions) ` +
-      `and generated/content-gaps.json (${gaps.length}/${followUps.length} follow-ups are content gaps).`,
+    `✔ Wrote generated/related-suggestions.json (${suggestions.length} question(s) with suggestions), ` +
+      `generated/content-gaps.json (${gaps.length}/${followUps.length} follow-ups are content gaps), ` +
+      `and generated/follow-up-links.json (${followUpLinks.length} inline link(s)).`,
   );
 }
 

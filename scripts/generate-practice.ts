@@ -1,5 +1,4 @@
 #!/usr/bin/env tsx
-/** Builds generated/practice.json — the lean flashcard dataset for practice mode. */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";

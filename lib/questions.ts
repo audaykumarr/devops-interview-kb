@@ -41,6 +41,7 @@ export interface RelatedSuggestionEntry {
 export interface QuestionDetail extends QuestionIndexEntry {
   sections: Record<string, string>;
   relatedResolved: { entry: QuestionIndexEntry; suggested: boolean }[];
+  followUpLinks: FollowUpLink[];
 }
 
 export interface PracticeEntry {
@@ -146,6 +147,31 @@ function getSuggestedRelated(id: string): RelatedSuggestionEntry[] {
   return loadRelatedSuggestions().suggestions.find((s) => s.id === id)?.suggestions ?? [];
 }
 
+export interface FollowUpLink {
+  source_id: string;
+  follow_up: string;
+  matched_id: string;
+  matched_title: string;
+  matched_url: string;
+}
+
+let cachedFollowUpLinks: FollowUpLink[] | null = null;
+function loadFollowUpLinks(): FollowUpLink[] {
+  if (!cachedFollowUpLinks) {
+    try {
+      const raw = readFileSync(join(ROOT, "generated", "follow-up-links.json"), "utf-8");
+      cachedFollowUpLinks = JSON.parse(raw) as FollowUpLink[];
+    } catch {
+      cachedFollowUpLinks = [];
+    }
+  }
+  return cachedFollowUpLinks;
+}
+
+function getFollowUpLinks(sourceId: string): FollowUpLink[] {
+  return loadFollowUpLinks().filter((l) => l.source_id === sourceId);
+}
+
 /**
  * Loads a question's full detail for its page: resolves curated
  * related_questions to real entries, and — only if fewer than 3 are
@@ -167,7 +193,8 @@ export function getQuestionDetail(category: string, subcategory: string, slug: s
 
   const byId = new Map(getAllQuestions().map((q) => [q.id, q]));
   const relatedResolved: { entry: QuestionIndexEntry; suggested: boolean }[] = [];
-  const included = new Set<string>();
+  const followUpLinks = getFollowUpLinks(entry.id);
+  const included = new Set<string>(followUpLinks.map((l) => l.matched_id));
 
   for (const id of entry.related_questions) {
     const related = byId.get(id);
@@ -188,5 +215,5 @@ export function getQuestionDetail(category: string, subcategory: string, slug: s
     }
   }
 
-  return { ...entry, sections, relatedResolved };
+  return { ...entry, sections, relatedResolved, followUpLinks };
 }

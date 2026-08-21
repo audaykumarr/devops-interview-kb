@@ -16,7 +16,10 @@ tags:
   - scripting
 estimated_time_minutes: 8
 companies: []
-related_questions: []
+related_questions:
+  - linux-scheduling-systemd-timer-vs-cron-debugging-001
+  - bash-fundamentals-login-vs-non-login-shell-001
+  - bash-scripting-cron-cloud-cli-credentials-001
 status: published
 last_reviewed: 2026-08-21
 last_updated: 2026-08-21

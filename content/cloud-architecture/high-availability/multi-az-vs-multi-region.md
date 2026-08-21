@@ -16,7 +16,10 @@ tags:
   - aws
 estimated_time_minutes: 8
 companies: []
-related_questions: []
+related_questions:
+  - cloud-architecture-disaster-recovery-rpo-vs-rto-001
+  - cloud-architecture-disaster-recovery-active-active-data-layer-001
+  - cloud-architecture-high-availability-which-services-need-multi-region-001
 status: published
 last_reviewed: 2026-08-21
 last_updated: 2026-08-21

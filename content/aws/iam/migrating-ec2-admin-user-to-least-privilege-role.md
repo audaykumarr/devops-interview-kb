@@ -21,6 +21,9 @@ estimated_time_minutes: 12
 companies: []
 related_questions:
   - github-actions-security-oidc-migration-001
+  - aws-iam-least-privilege-ecs-lambda-vs-ec2-001
+  - aws-iam-third-party-app-static-keys-required-001
+  - aws-iam-preventing-workload-iam-user-recurrence-001
 status: published
 last_reviewed: 2026-08-19
 last_updated: 2026-08-19

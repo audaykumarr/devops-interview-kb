@@ -13,7 +13,6 @@ export interface PracticeEntry {
   url: string;
 }
 
-/** Builds the lean flashcard dataset for practice mode — question + short answer only, no full body. */
 export function buildPracticeSet(records: QuestionRecord[]): PracticeEntry[] {
   return records
     .map((r) => ({

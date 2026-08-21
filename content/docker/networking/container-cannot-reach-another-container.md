@@ -16,6 +16,9 @@ estimated_time_minutes: 8
 companies: []
 related_questions:
   - docker-images-multi-stage-optimization-001
+  - docker-networking-dns-service-discovery-001
+  - docker-networking-container-port-vs-published-port-001
+  - docker-networking-troubleshooting-moving-to-kubernetes-001
 status: published
 last_reviewed: 2026-08-21
 last_updated: 2026-08-21

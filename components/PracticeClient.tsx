@@ -49,9 +49,7 @@ export function PracticeClient({
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) setProgress(JSON.parse(raw));
-    } catch {
-      // localStorage unavailable or corrupted — practice still works, just without persisted progress.
-    }
+    } catch {}
   }, [allCards]);
 
   const filtered = useMemo(() => {
@@ -71,9 +69,7 @@ export function PracticeClient({
     setProgress(next);
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      // Best-effort persistence — nothing to do if storage is unavailable (private browsing, quota, etc).
-    }
+    } catch {}
   }
 
   function resetProgress() {

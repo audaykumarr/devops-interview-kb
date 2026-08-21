@@ -16,7 +16,10 @@ tags:
   - fundamentals
 estimated_time_minutes: 6
 companies: []
-related_questions: []
+related_questions:
+  - devops-fundamentals-which-practice-to-introduce-first-001
+  - devops-fundamentals-real-platform-team-vs-ops-rebrand-001
+  - devops-fundamentals-can-startup-practice-sre-001
 status: published
 last_reviewed: 2026-08-21
 last_updated: 2026-08-21

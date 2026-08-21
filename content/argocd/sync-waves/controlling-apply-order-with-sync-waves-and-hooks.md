@@ -17,7 +17,10 @@ tags:
   - kubernetes
 estimated_time_minutes: 8
 companies: []
-related_questions: []
+related_questions:
+  - argocd-sync-waves-migration-job-every-sync-vs-changed-001
+  - argocd-sync-waves-presync-hook-failure-retry-001
+  - argocd-sync-waves-argocd-hooks-vs-helm-hooks-001
 status: published
 last_reviewed: 2026-08-21
 last_updated: 2026-08-21

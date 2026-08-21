@@ -16,7 +16,10 @@ tags:
   - saas
 estimated_time_minutes: 6
 companies: []
-related_questions: []
+related_questions:
+  - cloud-fundamentals-serverless-iaas-paas-saas-fit-001
+  - cloud-fundamentals-iaas-to-paas-migration-evaluation-001
+  - cloud-fundamentals-saas-reliance-operational-risks-001
 status: published
 last_reviewed: 2026-08-21
 last_updated: 2026-08-21

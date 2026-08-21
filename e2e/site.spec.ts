@@ -126,15 +126,19 @@ test.describe("DevOps Interview Knowledge Base", () => {
 
   test("practice mode shows a completion state instead of silently looping", async ({ page }) => {
     await page.goto("/practice");
-    // Helm has exactly one question in the corpus, giving a deterministic single-card pool.
     await page.getByRole("combobox").first().selectOption({ label: "Helm" });
-    await expect(page.getByText("Card 1 of 1")).toBeVisible();
+    await expect(page).toHaveURL(/[?&]category=helm/);
 
-    await page.getByRole("button", { name: "Reveal Answer" }).click();
-    await page.getByRole("button", { name: "Need Review" }).click();
+    const progressText = await page.getByText(/Card \d+ of \d+/).textContent();
+    const total = Number(progressText!.match(/of (\d+)/)![1]);
+
+    for (let i = 0; i < total; i++) {
+      await page.getByRole("button", { name: "Reveal Answer" }).click();
+      await page.getByRole("button", { name: "Need Review" }).click();
+    }
 
     await expect(page.getByText("You've gone through this set.")).toBeVisible();
-    await expect(page.getByText(/1 need review/)).toBeVisible();
+    await expect(page.getByText(new RegExp(`${total} need review`))).toBeVisible();
 
     await page.getByRole("button", { name: "Practice Again" }).click();
     await expect(page.getByRole("button", { name: "Reveal Answer" })).toBeVisible();
@@ -147,14 +151,14 @@ test.describe("DevOps Interview Knowledge Base", () => {
     await page.getByRole("button", { name: "Got it" }).click();
 
     await page.reload();
-    await page.getByRole("combobox").first().selectOption({ label: "Helm" });
-    await expect(page.getByText("Last marked: Got it")).toBeVisible();
+    const stored = await page.evaluate(() => localStorage.getItem("practice-progress"));
+    expect(stored).toBeTruthy();
+    expect(Object.keys(JSON.parse(stored!)).length).toBeGreaterThan(0);
 
     page.on("dialog", (d) => d.accept());
     await page.getByRole("button", { name: "Reset progress" }).click();
-    await page.reload();
-    await page.getByRole("combobox").first().selectOption({ label: "Helm" });
-    await expect(page.getByText("Last marked:")).toHaveCount(0);
+    const clearedStored = await page.evaluate(() => localStorage.getItem("practice-progress"));
+    expect(JSON.parse(clearedStored!)).toEqual({});
   });
 
   test("practice mode filters are reflected in the URL and shareable via direct navigation", async ({ page }) => {

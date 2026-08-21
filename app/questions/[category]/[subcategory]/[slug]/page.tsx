@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { DifficultyBadge, TechnologyBadge, TypeBadge } from "@/components/Badge";
 import { CopyLinkButton } from "@/components/CopyLinkButton";
+import { FollowUpQuestions } from "@/components/FollowUpQuestions";
 import { JsonLd } from "@/components/JsonLd";
 import { MarkdownSection } from "@/components/MarkdownSection";
 import { RelatedQuestions } from "@/components/RelatedQuestions";
@@ -127,7 +128,11 @@ export default async function QuestionPage({ params }: PageProps) {
               {heading}
             </h2>
             <div className="mt-2">
-              <MarkdownSection content={detail.sections[heading]!} />
+              {heading === "Interview Follow-Up Questions" ? (
+                <FollowUpQuestions content={detail.sections[heading]!} links={detail.followUpLinks} />
+              ) : (
+                <MarkdownSection content={detail.sections[heading]!} />
+              )}
             </div>
           </section>
         ))}

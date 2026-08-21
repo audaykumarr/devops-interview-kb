@@ -17,7 +17,10 @@ tags:
   - fundamentals
 estimated_time_minutes: 7
 companies: []
-related_questions: []
+related_questions:
+  - containers-fundamentals-linux-namespace-types-001
+  - containers-fundamentals-image-size-startup-attack-surface-001
+  - containers-fundamentals-explaining-security-tradeoff-untrusted-code-001
 status: published
 last_reviewed: 2026-08-21
 last_updated: 2026-08-21

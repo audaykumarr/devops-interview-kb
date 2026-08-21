@@ -16,7 +16,10 @@ tags:
   - troubleshooting
 estimated_time_minutes: 8
 companies: []
-related_questions: []
+related_questions:
+  - devops-fundamentals-idempotency-vs-safe-to-rerun-001
+  - ansible-playbooks-check-mode-command-shell-limitation-001
+  - ansible-playbooks-retrofitting-idempotency-large-playbook-001
 status: published
 last_reviewed: 2026-08-21
 last_updated: 2026-08-21
