@@ -1,0 +1,48 @@
+{
+  "name": "devops-interview-kb",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A Git-driven, structured knowledge base of original DevOps interview questions.",
+  "license": "MIT",
+  "scripts": {
+    "validate": "tsx scripts/validate-content.ts",
+    "generate:index": "tsx scripts/generate-index.ts",
+    "generate:stats": "tsx scripts/generate-stats.ts",
+    "generate:related": "tsx scripts/generate-related.ts",
+    "build:content": "npm run validate && npm run generate:index && npm run generate:stats && npm run generate:related",
+    "test": "tsx --test scripts/tests/*.test.ts",
+    "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit",
+    "predev": "npm run build:content",
+    "dev": "next dev",
+    "prebuild": "npm run build:content",
+    "build": "next build",
+    "start": "next start"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@tailwindcss/typography": "^0.5.20",
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "gray-matter": "^4.0.3",
+    "postcss": "^8.5.26",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "next": "^16.3.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
+  }
+}
