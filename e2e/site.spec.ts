@@ -103,6 +103,85 @@ test.describe("DevOps Interview Knowledge Base", () => {
     expect(jsonLdCount).toBeGreaterThanOrEqual(2); // BreadcrumbList + QAPage
   });
 
+  test("practice mode reveals the answer, marks progress, and advances", async ({ page }) => {
+    await page.goto("/practice");
+    await expect(page.getByRole("heading", { name: "Practice" })).toBeVisible();
+
+    const card = page.locator("p.text-lg.font-medium");
+    await expect(card).toBeVisible();
+
+    await page.getByRole("button", { name: "Reveal Answer" }).click();
+    await expect(page.getByRole("link", { name: "View full explanation →" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Got it" }).click();
+    await expect(page.getByRole("button", { name: "Reveal Answer" })).toBeVisible();
+    await expect(page.getByText(/1 known/)).toBeVisible();
+  });
+
+  test("practice mode category filter narrows the pool", async ({ page }) => {
+    await page.goto("/practice");
+    await page.getByRole("combobox").first().selectOption({ label: "AWS" });
+    await expect(page.getByText(/Card 1 of \d+/)).toBeVisible();
+  });
+
+  test("practice mode shows a completion state instead of silently looping", async ({ page }) => {
+    await page.goto("/practice");
+    // Helm has exactly one question in the corpus, giving a deterministic single-card pool.
+    await page.getByRole("combobox").first().selectOption({ label: "Helm" });
+    await expect(page.getByText("Card 1 of 1")).toBeVisible();
+
+    await page.getByRole("button", { name: "Reveal Answer" }).click();
+    await page.getByRole("button", { name: "Need Review" }).click();
+
+    await expect(page.getByText("You've gone through this set.")).toBeVisible();
+    await expect(page.getByText(/1 need review/)).toBeVisible();
+
+    await page.getByRole("button", { name: "Practice Again" }).click();
+    await expect(page.getByRole("button", { name: "Reveal Answer" })).toBeVisible();
+  });
+
+  test("progress persists across a reload via localStorage", async ({ page }) => {
+    await page.goto("/practice");
+    await page.getByRole("combobox").first().selectOption({ label: "Helm" });
+    await page.getByRole("button", { name: "Reveal Answer" }).click();
+    await page.getByRole("button", { name: "Got it" }).click();
+
+    await page.reload();
+    await page.getByRole("combobox").first().selectOption({ label: "Helm" });
+    await expect(page.getByText("Last marked: Got it")).toBeVisible();
+
+    page.on("dialog", (d) => d.accept());
+    await page.getByRole("button", { name: "Reset progress" }).click();
+    await page.reload();
+    await page.getByRole("combobox").first().selectOption({ label: "Helm" });
+    await expect(page.getByText("Last marked:")).toHaveCount(0);
+  });
+
+  test("practice mode filters are reflected in the URL and shareable via direct navigation", async ({ page }) => {
+    await page.goto("/practice");
+    await page.getByRole("combobox").first().selectOption({ label: "AWS" });
+    await expect(page).toHaveURL(/[?&]category=aws/);
+
+    await page.goto("/practice?category=aws");
+    await expect(page.getByRole("combobox").first()).toHaveValue("aws");
+    await expect(page.getByText(/Card 1 of \d+/)).toBeVisible();
+  });
+
+  test("review only toggle narrows the pool to cards marked for review", async ({ page }) => {
+    await page.goto("/practice");
+    await page.getByRole("combobox").first().selectOption({ label: "Helm" });
+    await page.getByRole("button", { name: "Reveal Answer" }).click();
+    await page.getByRole("button", { name: "Need Review" }).click();
+
+    await page.getByRole("checkbox", { name: "Review only" }).click();
+    await expect(page.getByRole("checkbox", { name: "Review only" })).toBeChecked();
+    await expect(page).toHaveURL(/[?&]review=1/);
+    await expect(page.getByText("Card 1 of 1")).toBeVisible();
+
+    await page.getByRole("combobox").first().selectOption({ label: "AWS" });
+    await expect(page.getByText("Nothing marked for review with these filters.")).toBeVisible();
+  });
+
   test("sitemap.xml and robots.txt exist and are well-formed", async ({ request }) => {
     const sitemapRes = await request.get("/sitemap.xml");
     expect(sitemapRes.status()).toBe(200);
@@ -120,7 +199,7 @@ test.describe("DevOps Interview Knowledge Base", () => {
     page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
     page.on("pageerror", (e) => errors.push(String(e)));
 
-    for (const path of ["/", "/aws", SAMPLE_QUESTION_PATH, "/search", "/technologies/kubernetes", "/difficulty/advanced"]) {
+    for (const path of ["/", "/aws", SAMPLE_QUESTION_PATH, "/search", "/technologies/kubernetes", "/difficulty/advanced", "/practice", "/contact"]) {
       await page.goto(path, { waitUntil: "networkidle" });
     }
     expect(errors).toEqual([]);

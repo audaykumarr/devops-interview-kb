@@ -43,6 +43,19 @@ export interface QuestionDetail extends QuestionIndexEntry {
   relatedResolved: { entry: QuestionIndexEntry; suggested: boolean }[];
 }
 
+export interface PracticeEntry {
+  id: string;
+  title: string;
+  category: string;
+  subcategory: string;
+  difficulty: "beginner" | "intermediate" | "advanced" | "expert";
+  technologies: string[];
+  question_type: string[];
+  question: string;
+  shortAnswer: string;
+  url: string;
+}
+
 let cachedIndex: QuestionIndexEntry[] | null = null;
 export function getAllQuestions(): QuestionIndexEntry[] {
   if (!cachedIndex) {
@@ -50,6 +63,15 @@ export function getAllQuestions(): QuestionIndexEntry[] {
     cachedIndex = JSON.parse(raw) as QuestionIndexEntry[];
   }
   return cachedIndex;
+}
+
+let cachedPractice: PracticeEntry[] | null = null;
+export function getPracticeSet(): PracticeEntry[] {
+  if (!cachedPractice) {
+    const raw = readFileSync(join(ROOT, "generated", "practice.json"), "utf-8");
+    cachedPractice = JSON.parse(raw) as PracticeEntry[];
+  }
+  return cachedPractice;
 }
 
 let cachedStats: Statistics | null = null;

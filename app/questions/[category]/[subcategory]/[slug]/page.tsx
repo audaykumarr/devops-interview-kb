@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { DifficultyBadge, TechnologyBadge, TypeBadge } from "@/components/Badge";
+import { CopyLinkButton } from "@/components/CopyLinkButton";
 import { JsonLd } from "@/components/JsonLd";
 import { MarkdownSection } from "@/components/MarkdownSection";
 import { RelatedQuestions } from "@/components/RelatedQuestions";
@@ -98,7 +99,10 @@ export default async function QuestionPage({ params }: PageProps) {
         ]}
       />
 
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 sm:text-3xl">{detail.title}</h1>
+      <div className="flex items-start justify-between gap-3">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 sm:text-3xl">{detail.title}</h1>
+        <CopyLinkButton path={detail.url} />
+      </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-1.5">
         <DifficultyBadge difficulty={detail.difficulty} />

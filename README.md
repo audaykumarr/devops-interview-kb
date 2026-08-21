@@ -1,5 +1,10 @@
 # DevOps Interview Knowledge Base
 
+[![Deploy](https://github.com/audaykumarr/devops-interview-kb/actions/workflows/deploy.yml/badge.svg)](https://github.com/audaykumarr/devops-interview-kb/actions/workflows/deploy.yml)
+[![PR Validation](https://github.com/audaykumarr/devops-interview-kb/actions/workflows/pr-validation.yml/badge.svg)](https://github.com/audaykumarr/devops-interview-kb/actions/workflows/pr-validation.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Live site](https://img.shields.io/badge/live-devopsinterviewkb.com-indigo)](https://devopsinterviewkb.com)
+
 A structured, Git-driven, open-source knowledge base of original DevOps interview
 questions — from foundational concepts to real production troubleshooting scenarios.
 

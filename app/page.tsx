@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { SearchBox } from "@/components/SearchBox";
-import { StatTile } from "@/components/StatTile";
 import { DifficultyBadge } from "@/components/Badge";
 import { getAllQuestions, getAllTechnologies, getCategoriesWithCounts, getStatistics } from "@/lib/questions";
 import { labelize } from "@/lib/format";
@@ -13,6 +12,7 @@ export default function HomePage() {
     .filter((c) => c.count > 0)
     .sort((a, b) => b.count - a.count);
   const technologies = getAllTechnologies().slice(0, 16);
+  const questionTypes = Object.entries(stats.by_question_type).sort((a, b) => b[1] - a[1]);
   const allQuestions = getAllQuestions();
 
   return (
@@ -30,14 +30,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTile label="Questions" value={stats.total_questions} />
-        <StatTile label="Categories" value={categories.length} />
-        <StatTile label="Technologies" value={Object.keys(stats.by_technology).length} />
-        <StatTile label="Question Types" value={Object.keys(stats.by_question_type).length} />
-      </section>
-
-      <section className="mt-12">
+      <section className="mt-10">
         <SectionHeading>Browse by Category</SectionHeading>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {categories.map((c) => (
@@ -87,26 +80,17 @@ export default function HomePage() {
       </section>
 
       <section className="mt-12">
-        <SectionHeading>Practice by Format</SectionHeading>
+        <SectionHeading>Browse by Question Type</SectionHeading>
         <div className="flex flex-wrap gap-2">
-          <Link
-            href="/search?type=scenario"
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
-          >
-            Scenario Questions
-          </Link>
-          <Link
-            href="/search?type=troubleshooting"
-            className="rounded-md bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600"
-          >
-            Troubleshooting Questions
-          </Link>
-          <Link
-            href="/search?type=hands-on"
-            className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900"
-          >
-            Hands-On Questions
-          </Link>
+          {questionTypes.map(([type, count]) => (
+            <Link
+              key={type}
+              href={`/search?type=${type}`}
+              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:border-slate-300 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-700"
+            >
+              {labelize(type)} <span className="text-slate-400 dark:text-slate-500">({count})</span>
+            </Link>
+          ))}
         </div>
       </section>
 

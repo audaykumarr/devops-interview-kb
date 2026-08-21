@@ -16,6 +16,12 @@ export function Header() {
           <Link href="/search" className="hover:text-slate-900 dark:hover:text-slate-100">
             Search
           </Link>
+          <Link href="/practice" className="hover:text-slate-900 dark:hover:text-slate-100">
+            Practice
+          </Link>
+          <Link href="/contact" className="hover:text-slate-900 dark:hover:text-slate-100">
+            Contact
+          </Link>
           <a
             href="https://github.com/audaykumarr/devops-interview-kb"
             className="hover:text-slate-900 dark:hover:text-slate-100"
