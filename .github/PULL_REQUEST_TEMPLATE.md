@@ -4,7 +4,13 @@
 
 ## Checklist
 
-- [ ] `npm run validate` passes locally
-- [ ] `npm test` passes locally
+Run the full suite locally before opening this PR — it's what CI runs, and a
+content-only change can still break a page or an e2e test via the generated
+index:
+
+- [ ] `npm run validate`
+- [ ] `npm run typecheck`
+- [ ] `npm test`
+- [ ] `npm run build`
+- [ ] `npm run test:e2e`
 - [ ] For a new/edited question: content is original (see [CONTRIBUTING.md](../CONTRIBUTING.md#originality)), not copied or lightly reworded from another source
-- [ ] For a code change: `npm run typecheck` and `npm run build` pass locally

@@ -20,19 +20,26 @@ change.
 4. **Follow the schema**: fill in every required frontmatter field (see
    [README.md](README.md#content-model)) and every required body section for
    your question's `question_type`.
-5. **Run validation**:
+5. **Run the full check suite locally — the same one CI runs**:
 
    ```bash
    npm install
    npm run validate
+   npm run typecheck
+   npm test
+   npm run build
+   npm run test:e2e
    ```
 
-   Fix anything it flags before opening a PR — CI runs the same check and will
-   block the merge otherwise.
+   Running only `npm run validate` isn't enough, even for a content-only
+   change — the generated index feeds the website, so a change to `content/`
+   can still break a page or an e2e assertion. `pr-validation.yml` runs all
+   five of these; if any of them would fail, it's better to find that out in
+   under two minutes locally than after pushing. Fix anything that fails
+   before opening a PR.
 6. **Submit a PR** against `main`. Describe what the question covers and why
    it's a good addition.
-7. **Automated checks** run on the PR (schema validation, structure checks,
-   duplicate/placeholder detection).
+7. **Automated checks** run on the PR — the exact commands above, in CI.
 8. **Review**: a maintainer reviews for technical accuracy, originality, and
    quality — not just "did it pass validation."
 9. **Merge**: once approved and green, it's merged and becomes part of the
