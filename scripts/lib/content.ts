@@ -29,7 +29,7 @@ export function findMarkdownFiles(dir: string): string[] {
 /** Splits a question body into named sections keyed by heading text (H1 or H2). */
 export function extractHeadings(body: string): Map<string, string> {
   const sections = new Map<string, string>();
-  const lines = body.split("\n");
+  const lines = body.replace(/\r\n/g, "\n").split("\n");
   let currentHeading: string | null = null;
   let currentContent: string[] = [];
 
@@ -72,7 +72,7 @@ function normalizeDateFields(data: Record<string, unknown>): void {
 }
 
 export function loadQuestionFile(file: string, rootDir: string): RawQuestionFile {
-  const raw = readFileSync(file, "utf-8");
+  const raw = readFileSync(file, "utf-8").replace(/\r\n/g, "\n");
   const { data, content } = matter(raw);
   normalizeDateFields(data);
   return {

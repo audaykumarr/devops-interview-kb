@@ -19,7 +19,7 @@ export default function HomePage() {
     <div>
       <section className="text-center">
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-4xl">
-          DevOps Interview Questions
+          DevOps Interview Knowledge Base
         </h1>
         <p className="mx-auto mt-3 max-w-2xl text-slate-600 dark:text-slate-400">
           Practical, scenario-driven interview prep — from foundational concepts to real

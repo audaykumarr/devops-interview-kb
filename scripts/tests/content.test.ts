@@ -22,6 +22,14 @@ test("extractHeadings preserves multi-paragraph section content", () => {
   assert.equal(sections.get("Key Takeaways"), "- a\n- b");
 });
 
+test("extractHeadings is unaffected by CRLF line endings", () => {
+  const body = "## Question\r\n\r\nWhat is X?\r\n\r\n## Short Answer\r\n\r\nY.\r\n";
+  const sections = extractHeadings(body);
+  assert.equal(sections.get("Question"), "What is X?");
+  assert.equal(sections.get("Short Answer"), "Y.");
+  assert.equal(sections.has("Question\r"), false);
+});
+
 test("extractBulletList parses markdown list items and ignores non-bullet lines", () => {
   const items = extractBulletList("- one\n- two\nNot a bullet\n- three\n\n- four");
   assert.deepEqual(items, ["one", "two", "three", "four"]);

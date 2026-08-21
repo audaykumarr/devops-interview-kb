@@ -10,7 +10,7 @@ test.describe("DevOps Interview Knowledge Base", () => {
 
     const response = await page.goto("/");
     expect(response?.status()).toBe(200);
-    await expect(page.getByRole("heading", { name: "DevOps Interview Questions" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "DevOps Interview Knowledge Base" })).toBeVisible();
     expect(consoleErrors).toEqual([]);
   });
 
