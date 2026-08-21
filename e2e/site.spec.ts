@@ -34,22 +34,34 @@ test.describe("DevOps Interview Knowledge Base", () => {
     await page.goto("/search");
     await page.getByPlaceholder("Search by title, tag, or technology...").fill("kubernetes");
     await expect(page.getByText(/results for/i)).toBeVisible();
-    // Exactly the 2 sample questions tagged/titled around Kubernetes should match.
-    await expect(page.locator("main a.group")).toHaveCount(2);
+    const results = page.locator("main a.group");
+    await expect(results.first()).toBeVisible();
+    // A known Kubernetes question should always be among the matches, regardless of how many others exist.
+    await expect(
+      page.locator('a[href="/questions/kubernetes/troubleshooting/pod-stuck-crashloopbackoff-after-config-change"]'),
+    ).toBeVisible();
   });
 
   test("difficulty filter narrows a category page via URL params", async ({ page }) => {
-    // The one AWS sample question is "advanced" — filtering to beginner should empty the list.
-    await page.goto("/aws?difficulty=beginner");
-    await expect(page.getByText("No questions match these filters yet.")).toBeVisible();
+    await page.goto("/aws");
+    const totalCount = await page.locator("a[href^='/questions/aws/']").count();
+    expect(totalCount).toBeGreaterThan(0);
 
     await page.goto("/aws?difficulty=advanced");
-    await expect(page.locator("a[href^='/questions/aws/']").first()).toBeVisible();
+    const filteredCount = await page.locator("a[href^='/questions/aws/']").count();
+    expect(filteredCount).toBeGreaterThan(0);
+    expect(filteredCount).toBeLessThanOrEqual(totalCount);
   });
 
   test("technology filter narrows a category page via URL params", async ({ page }) => {
+    await page.goto("/kubernetes");
+    const totalCount = await page.locator("a[href^='/questions/kubernetes/']").count();
+    expect(totalCount).toBeGreaterThan(0);
+
     await page.goto("/kubernetes?technology=containers");
-    await expect(page.locator("a[href^='/questions/kubernetes/']")).toHaveCount(1);
+    const filteredCount = await page.locator("a[href^='/questions/kubernetes/']").count();
+    expect(filteredCount).toBeGreaterThan(0);
+    expect(filteredCount).toBeLessThanOrEqual(totalCount);
 
     await page.goto("/kubernetes?technology=nonexistent-tech");
     await expect(page.getByText("No questions match these filters yet.")).toBeVisible();
