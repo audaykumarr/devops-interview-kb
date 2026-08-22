@@ -19,6 +19,7 @@ export function FilterBar({ filters }: { filters: FilterDefinition[] }) {
     const params = new URLSearchParams(searchParams.toString());
     if (value) params.set(key, value);
     else params.delete(key);
+    params.delete("page");
     const query = params.toString();
     router.push(query ? `${pathname}?${query}` : pathname);
   }
