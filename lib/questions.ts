@@ -30,6 +30,7 @@ export interface QuestionIndexEntry {
 export interface TaxonomyCategory {
   slug: string;
   name: string;
+  description?: string;
 }
 
 export interface RelatedSuggestionEntry {

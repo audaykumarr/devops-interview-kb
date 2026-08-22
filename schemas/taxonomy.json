@@ -1,44 +1,200 @@
 {
   "$comment": "Canonical registry of valid top-level content categories. This file is the single source of truth for: (1) content validation (scripts/validate-content.ts), (2) content/<category> directory names, (3) website navigation. Adding a category here + creating the matching content/<slug> directory is how the taxonomy grows.",
   "categories": [
-    { "slug": "devops-fundamentals", "name": "DevOps Fundamentals" },
-    { "slug": "linux", "name": "Linux" },
-    { "slug": "git", "name": "Git" },
-    { "slug": "github", "name": "GitHub" },
-    { "slug": "gitlab", "name": "GitLab" },
-    { "slug": "aws", "name": "AWS" },
-    { "slug": "azure", "name": "Azure" },
-    { "slug": "gcp", "name": "Google Cloud Platform" },
-    { "slug": "cloud-fundamentals", "name": "Cloud Fundamentals" },
-    { "slug": "docker", "name": "Docker" },
-    { "slug": "kubernetes", "name": "Kubernetes" },
-    { "slug": "helm", "name": "Helm" },
-    { "slug": "terraform", "name": "Terraform" },
-    { "slug": "ansible", "name": "Ansible" },
-    { "slug": "cicd", "name": "CI/CD" },
-    { "slug": "github-actions", "name": "GitHub Actions" },
-    { "slug": "azure-pipelines", "name": "Azure Pipelines" },
-    { "slug": "gitlab-ci", "name": "GitLab CI/CD" },
-    { "slug": "jenkins", "name": "Jenkins" },
-    { "slug": "networking", "name": "Networking" },
-    { "slug": "security", "name": "Security" },
-    { "slug": "devsecops", "name": "DevSecOps" },
-    { "slug": "monitoring", "name": "Monitoring" },
-    { "slug": "observability", "name": "Observability" },
-    { "slug": "sre", "name": "SRE" },
-    { "slug": "infrastructure-as-code", "name": "Infrastructure as Code" },
-    { "slug": "gitops", "name": "GitOps" },
-    { "slug": "argocd", "name": "Argo CD" },
-    { "slug": "containers", "name": "Containers" },
-    { "slug": "bash", "name": "Bash" },
-    { "slug": "python", "name": "Python" },
-    { "slug": "yaml", "name": "YAML" },
-    { "slug": "databases", "name": "Databases" },
-    { "slug": "cloud-architecture", "name": "Cloud Architecture" },
-    { "slug": "system-design", "name": "System Design" },
-    { "slug": "platform-engineering", "name": "Platform Engineering" },
-    { "slug": "troubleshooting", "name": "Troubleshooting" },
-    { "slug": "scenarios", "name": "Real-World Scenarios" },
-    { "slug": "behavioral", "name": "Behavioral / DevOps Leadership" }
+    {
+      "slug": "devops-fundamentals",
+      "name": "DevOps Fundamentals",
+      "description": "Core DevOps concepts and culture questions — the ones that show up early in an interview to check whether a candidate actually understands why the practices exist, not just their names."
+    },
+    {
+      "slug": "linux",
+      "name": "Linux",
+      "description": "Linux systems questions covering the command-line fluency and troubleshooting instincts DevOps and SRE roles assume as table stakes."
+    },
+    {
+      "slug": "git",
+      "name": "Git",
+      "description": "Git interview questions on branching strategy, history rewriting, and the recovery commands you actually need when a repository is in a bad state."
+    },
+    {
+      "slug": "github",
+      "name": "GitHub",
+      "description": "Questions on GitHub as a platform — repository administration, permissions, and workflow features beyond plain Git."
+    },
+    {
+      "slug": "gitlab",
+      "name": "GitLab",
+      "description": "Questions on GitLab as a platform — project and permission structure, and how it differs from other Git hosting in day-to-day DevOps work."
+    },
+    {
+      "slug": "aws",
+      "name": "AWS",
+      "description": "AWS interview questions built around real production judgment, not service trivia — IAM least-privilege design and incident response, Lambda cold-start and concurrency trade-offs, and S3 exposure prevention and fast alerting. Each thread goes deep on one realistic scenario rather than skimming many services shallowly, covering beginner fundamentals through expert-level architecture and troubleshooting."
+    },
+    {
+      "slug": "azure",
+      "name": "Azure",
+      "description": "Azure interview questions on identity, networking, and resource management for teams running production workloads on Microsoft's cloud."
+    },
+    {
+      "slug": "gcp",
+      "name": "Google Cloud Platform",
+      "description": "GCP interview questions covering IAM (Workload Identity, service account security, org policy versus IAM), Cloud Functions (cold starts, Pub/Sub delivery semantics, Gen 1 versus Gen 2 concurrency), and Cloud Storage (access control, signed URLs, lifecycle management, exposure alerting) — scenario-driven, matching the same depth as this site's AWS coverage rather than treating GCP as an afterthought."
+    },
+    {
+      "slug": "cloud-fundamentals",
+      "name": "Cloud Fundamentals",
+      "description": "Cross-provider cloud computing concepts — the shared vocabulary and trade-offs that apply before you've committed to any single vendor."
+    },
+    {
+      "slug": "docker",
+      "name": "Docker",
+      "description": "Docker interview questions spanning image and build fundamentals (layer caching, multi-stage builds, image size trade-offs), networking (container-to-container connectivity, DNS-based service discovery), and volumes/persistence (bind mounts versus named volumes, data-loss scenarios, backup strategy) — grounded in real debugging scenarios engineers actually hit, not just command syntax."
+    },
+    {
+      "slug": "kubernetes",
+      "name": "Kubernetes",
+      "description": "The most extensive topic on this site: RBAC and security context, storage (PV/PVC/StorageClass), workloads and controllers (Deployments, StatefulSets, DaemonSets, Jobs, CronJobs), autoscaling (HPA/VPA), scheduling and affinity, networking, cluster architecture, CRDs and operators, admission control, and cluster security hardening. Every question is a realistic production scenario — a pod stuck Pending, a webhook silently breaking scheduling, a StatefulSet rollout behaving unexpectedly — not a bare definition."
+    },
+    {
+      "slug": "helm",
+      "name": "Helm",
+      "description": "Helm interview questions covering release management (stuck releases, atomic upgrades, rollback pitfalls), chart authoring (values precedence, subchart overrides, library charts, hooks), and packaging/distribution (versioning, private registries, Kustomize comparison) — the operational edge cases that come up once you're running Helm in a real, multi-team production environment."
+    },
+    {
+      "slug": "terraform",
+      "name": "Terraform",
+      "description": "Terraform interview questions on provider versioning and the dependency lock file, workspaces versus separate state files, state management (drift, locking, splitting monoliths, sensitive data, backup/recovery), and module design — the kind of state-file and provider-behavior subtleties that only show up after running Terraform against real, shared infrastructure."
+    },
+    {
+      "slug": "ansible",
+      "name": "Ansible",
+      "description": "Ansible interview questions on idempotency, inventory management, and playbook design decisions that separate a working demo from something safe to run against production hosts repeatedly."
+    },
+    {
+      "slug": "cicd",
+      "name": "CI/CD",
+      "description": "Tool-agnostic continuous integration and delivery questions — pipeline design, testing strategy, and deployment safety that apply regardless of which CI system you're running."
+    },
+    {
+      "slug": "github-actions",
+      "name": "GitHub Actions",
+      "description": "GitHub Actions interview questions on workflow design, reusable actions, and the permission and secrets-handling decisions that matter once a pipeline touches production."
+    },
+    {
+      "slug": "azure-pipelines",
+      "name": "Azure Pipelines",
+      "description": "Azure Pipelines interview questions on YAML pipeline structure, multi-stage releases, and the approval gates teams rely on for safe deployments."
+    },
+    {
+      "slug": "gitlab-ci",
+      "name": "GitLab CI/CD",
+      "description": "GitLab CI/CD interview questions on pipeline stages, runners, and the caching and artifact decisions that determine whether a pipeline is fast or fragile."
+    },
+    {
+      "slug": "jenkins",
+      "name": "Jenkins",
+      "description": "Jenkins interview questions on pipeline-as-code, plugin and agent management, and the operational realities of running a long-lived CI server in production."
+    },
+    {
+      "slug": "networking",
+      "name": "Networking",
+      "description": "Networking fundamentals for DevOps roles — DNS, load balancing, and connectivity troubleshooting across the layers most infrastructure incidents actually live in."
+    },
+    {
+      "slug": "security",
+      "name": "Security",
+      "description": "General security interview questions covering the threat models and hardening practices DevOps engineers are expected to reason about, beyond any single tool."
+    },
+    {
+      "slug": "devsecops",
+      "name": "DevSecOps",
+      "description": "DevSecOps interview questions on shifting security left — pipeline scanning, policy-as-code, and making security a default rather than a gate bolted on at the end."
+    },
+    {
+      "slug": "monitoring",
+      "name": "Monitoring",
+      "description": "Monitoring interview questions on metrics, alerting design, and telling the difference between an alert that's actionable and one that's just noise."
+    },
+    {
+      "slug": "observability",
+      "name": "Observability",
+      "description": "Observability interview questions on metrics, logs, and traces as complementary signals — instrumentation decisions, cardinality trade-offs, and building systems you can actually debug in production rather than just watch."
+    },
+    {
+      "slug": "sre",
+      "name": "SRE",
+      "description": "Site Reliability Engineering interview questions on SLOs, error budgets, and the incident-response discipline that separates SRE practice from generic ops work."
+    },
+    {
+      "slug": "infrastructure-as-code",
+      "name": "Infrastructure as Code",
+      "description": "Cross-tool infrastructure-as-code questions on state management, drift, and module design that apply whether you're using Terraform, Pulumi, or something else entirely."
+    },
+    {
+      "slug": "gitops",
+      "name": "GitOps",
+      "description": "GitOps interview questions on Git-as-source-of-truth workflows, reconciliation loops, and the trade-offs of declarative, pull-based deployment versus traditional push pipelines."
+    },
+    {
+      "slug": "argocd",
+      "name": "Argo CD",
+      "description": "Argo CD interview questions on GitOps sync behavior, drift detection and reconciliation, and the app-of-apps patterns teams reach for once they're running Argo CD across multiple clusters and environments rather than a single toy deployment."
+    },
+    {
+      "slug": "containers",
+      "name": "Containers",
+      "description": "Container fundamentals beyond any single runtime — image layering, isolation mechanisms, and the concepts that underpin Docker, containerd, and Kubernetes alike."
+    },
+    {
+      "slug": "bash",
+      "name": "Bash",
+      "description": "Bash scripting interview questions on writing shell scripts that are actually safe to run unattended — error handling, quoting pitfalls, and common footguns."
+    },
+    {
+      "slug": "python",
+      "name": "Python",
+      "description": "Python interview questions focused on the automation and tooling use cases DevOps roles actually need Python for, not general-purpose language trivia."
+    },
+    {
+      "slug": "yaml",
+      "name": "YAML",
+      "description": "YAML interview questions on the syntax gotchas and structural conventions that matter once YAML is driving Kubernetes manifests, CI pipelines, and IaC config."
+    },
+    {
+      "slug": "databases",
+      "name": "Databases",
+      "description": "Database operations questions for DevOps and SRE roles — backup strategy, replication, and the failure modes that come up when you're responsible for a database's uptime, not just its schema."
+    },
+    {
+      "slug": "cloud-architecture",
+      "name": "Cloud Architecture",
+      "description": "Cloud architecture interview questions on designing resilient, cost-aware systems — the higher-level design judgment that sits above any single service or provider."
+    },
+    {
+      "slug": "system-design",
+      "name": "System Design",
+      "description": "System design interview questions with an infrastructure and operability lens — scaling, reliability, and trade-off reasoning for the kind of design rounds DevOps and platform roles actually run."
+    },
+    {
+      "slug": "platform-engineering",
+      "name": "Platform Engineering",
+      "description": "Platform engineering interview questions on internal developer platforms, self-service tooling, and the golden-path thinking that defines the discipline."
+    },
+    {
+      "slug": "troubleshooting",
+      "name": "Troubleshooting",
+      "description": "Cross-cutting troubleshooting scenarios that test systematic debugging under pressure, independent of any single technology stack."
+    },
+    {
+      "slug": "scenarios",
+      "name": "Real-World Scenarios",
+      "description": "Open-ended, real-world scenario questions that combine multiple technologies and force the kind of trade-off reasoning a single-topic question can't capture."
+    },
+    {
+      "slug": "behavioral",
+      "name": "Behavioral / DevOps Leadership",
+      "description": "Behavioral and leadership interview questions for DevOps roles — incident ownership, cross-team collaboration, and the non-technical judgment senior roles are actually evaluated on."
+    }
   ]
 }

@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { SearchBox } from "@/components/SearchBox";
 import { DifficultyBadge } from "@/components/Badge";
+import { JsonLd } from "@/components/JsonLd";
 import { getAllQuestions, getAllTechnologies, getCategoriesWithCounts, getStatistics } from "@/lib/questions";
 import { labelize } from "@/lib/format";
+import { organizationJsonLd, websiteJsonLd } from "@/lib/structured-data";
 
 const DIFFICULTIES = ["beginner", "intermediate", "advanced", "expert"];
 
@@ -17,6 +19,8 @@ export default function HomePage() {
 
   return (
     <div>
+      <JsonLd data={organizationJsonLd()} />
+      <JsonLd data={websiteJsonLd()} />
       <section className="text-center">
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-4xl">
           DevOps Interview Knowledge Base

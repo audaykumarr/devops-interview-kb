@@ -1,4 +1,4 @@
-import { SITE_URL } from "./site";
+import { SITE_NAME, SITE_URL } from "./site";
 
 export interface BreadcrumbItem {
   name: string;
@@ -15,6 +15,51 @@ export function breadcrumbJsonLd(items: BreadcrumbItem[]) {
       position: i + 1,
       name: item.name,
       ...(item.path ? { item: `${SITE_URL}${item.path}` } : {}),
+    })),
+  };
+}
+
+export function organizationJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: SITE_NAME,
+    url: SITE_URL,
+  };
+}
+
+export function websiteJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: SITE_NAME,
+    url: SITE_URL,
+    potentialAction: {
+      "@type": "SearchAction",
+      target: `${SITE_URL}/search?q={search_term_string}`,
+      "query-input": "required name=search_term_string",
+    },
+  };
+}
+
+export function itemListJsonLd({
+  name,
+  items,
+  startPosition = 1,
+}: {
+  name: string;
+  items: { title: string; url: string }[];
+  startPosition?: number;
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name,
+    itemListElement: items.map((item, i) => ({
+      "@type": "ListItem",
+      position: startPosition + i,
+      name: item.title,
+      url: `${SITE_URL}${item.url}`,
     })),
   };
 }
