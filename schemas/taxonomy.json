@@ -8,6 +8,7 @@
     { "slug": "gitlab", "name": "GitLab" },
     { "slug": "aws", "name": "AWS" },
     { "slug": "azure", "name": "Azure" },
+    { "slug": "gcp", "name": "Google Cloud Platform" },
     { "slug": "cloud-fundamentals", "name": "Cloud Fundamentals" },
     { "slug": "docker", "name": "Docker" },
     { "slug": "kubernetes", "name": "Kubernetes" },
