@@ -1,0 +1,120 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/audaykumarr/devops-interview-kb/blob/main/schemas/guide.schema.json",
+  "title": "DevOps Interview Guide",
+  "description": "Frontmatter schema for a single guide file under guides/<slug>.md. Guides sit above the question bank as editorial topic hubs — they reference questions dynamically by category/technology/level rather than duplicating question content. categories values must also exist in schemas/taxonomy.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "title",
+    "description",
+    "guide_type",
+    "categories",
+    "interview_levels",
+    "estimated_reading_minutes",
+    "status",
+    "last_reviewed",
+    "last_updated"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Globally unique identifier, kebab-case. Guides are few and curated, so unlike question ids this has no numeric sequence suffix.",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 15,
+      "maxLength": 70,
+      "description": "Guide title, used as the page H1 and the default meta title."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 50,
+      "maxLength": 160,
+      "description": "One to two sentences summarizing the guide's scope and audience. Feeds the meta description."
+    },
+    "guide_type": {
+      "type": "string",
+      "enum": ["interview", "learning", "troubleshooting", "preparation"],
+      "description": "Editorial emphasis, not a structural fork — every guide type shares the same schema, validator, and page template."
+    },
+    "category": {
+      "type": "string",
+      "description": "Primary taxonomy.json category slug for a technology-scoped guide (e.g. \"kubernetes\"). Omit for a domain-spanning guide with no single primary category.",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "categories": {
+      "type": "array",
+      "description": "Every taxonomy.json category this guide draws its dynamic question links from. Single-item for a technology-scoped guide, multi-item for a domain-spanning one.",
+      "items": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "technologies": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+      "uniqueItems": true,
+      "default": []
+    },
+    "interview_levels": {
+      "type": "array",
+      "description": "Which interview levels this guide is relevant to. Most guides list all 8; a role-scoped prep guide may target a subset.",
+      "items": {
+        "type": "string",
+        "enum": [
+          "junior-devops",
+          "devops-engineer",
+          "senior-devops",
+          "sre",
+          "platform-engineer",
+          "cloud-engineer",
+          "devsecops",
+          "staff-principal"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "estimated_reading_minutes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 60
+    },
+    "featured_questions": {
+      "type": "array",
+      "description": "A small, manually curated \"must practice\" list of question ids. Validated for existence against the question bank by scripts/validate-guides.ts. This is deliberately not exhaustive — the Practice Questions section is populated dynamically from `categories`/`technologies` at render time.",
+      "items": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*-[0-9]{3}$" },
+      "default": []
+    },
+    "related_guides": {
+      "type": "array",
+      "description": "Ids of other guides. Validated for existence and non-self-reference by scripts/validate-guides.ts.",
+      "items": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+      "default": []
+    },
+    "related_technologies": {
+      "type": "array",
+      "description": "Technology slugs to cross-link to (via /technologies/[slug]) beyond what's already listed in `technologies`.",
+      "items": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+      "default": []
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "published", "deprecated"]
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date"
+    },
+    "author": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9-]{1,39}$"
+    }
+  }
+}

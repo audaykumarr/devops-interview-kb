@@ -10,6 +10,8 @@ const ACRONYMS: Record<string, string> = {
   "cloud-fundamentals": "Cloud Fundamentals", "cloud-architecture": "Cloud Architecture",
   "platform-engineering": "Platform Engineering", "devops-fundamentals": "DevOps Fundamentals",
   "azure-pipelines": "Azure Pipelines",
+  "junior-devops": "Junior DevOps", "devops-engineer": "DevOps Engineer", "senior-devops": "Senior DevOps",
+  "staff-principal": "Staff / Principal",
 };
 
 /** Turns a kebab-case slug into a human-readable label, honoring common DevOps acronyms. */

@@ -14,6 +14,15 @@ test.describe("DevOps Interview Knowledge Base", () => {
     expect(consoleErrors).toEqual([]);
   });
 
+  test("homepage shows the total question count and links to Guides and Practice as distinct entry points", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByText(/^576 original, scenario-driven/)).toBeVisible();
+    const guidesCard = page.getByRole("link", { name: /Learn with a Guide/ });
+    await expect(guidesCard).toHaveAttribute("href", "/guides");
+    const practiceCard = page.getByRole("link", { name: /Jump into Practice/ });
+    await expect(practiceCard).toHaveAttribute("href", "/practice");
+  });
+
   test("category page loads and lists its questions", async ({ page }) => {
     const response = await page.goto("/aws");
     expect(response?.status()).toBe(200);
@@ -30,9 +39,24 @@ test.describe("DevOps Interview Knowledge Base", () => {
     await expect(page.getByRole("heading", { name: "References" })).toBeVisible();
   });
 
+  test("question page shows its Interview Level(s), each linking to the correct /level/[level] page", async ({ page }) => {
+    await page.goto(SAMPLE_QUESTION_PATH);
+    const levelRow = page.getByText("Interview level:").locator("..");
+    await expect(levelRow).toBeVisible();
+    const levelLinks = levelRow.locator("a");
+    await expect(levelLinks.first()).toBeVisible();
+    const href = await levelLinks.first().getAttribute("href");
+    expect(href).toMatch(/^\/level\/[a-z-]+$/);
+    await levelLinks.first().click();
+    await expect(page).toHaveURL(new RegExp(`${href!}$`));
+  });
+
   test("search filters results as you type", async ({ page }) => {
     await page.goto("/search");
-    await page.getByPlaceholder("Search by title, tag, or technology...").fill("kubernetes");
+    // A specific enough term to keep the known target question on page 1 of results (search
+    // results now paginate at 24/page, same as every other list page — see the pagination
+    // tests below for the broader "kubernetes" query, which spans multiple pages).
+    await page.getByPlaceholder("Search by title, tag, or technology...").fill("crashloopbackoff");
     await expect(page.getByText(/results for/i)).toBeVisible();
     const results = page.locator("main a.group");
     await expect(results.first()).toBeVisible();
@@ -40,6 +64,122 @@ test.describe("DevOps Interview Knowledge Base", () => {
     await expect(
       page.locator('a[href="/questions/kubernetes/troubleshooting/pod-stuck-crashloopbackoff-after-config-change"]'),
     ).toBeVisible();
+  });
+
+  test("search state (query and filters) is reflected in the URL and survives a page refresh", async ({ page }) => {
+    await page.goto("/search");
+    await page.getByPlaceholder("Search by title, tag, or technology...").fill("kubernetes");
+    await page.waitForURL(/[?&]q=kubernetes/);
+    const difficultySelect = page.getByLabel("Difficulty");
+    await difficultySelect.selectOption("advanced");
+    await page.waitForURL(/[?&]difficulty=advanced/);
+
+    await page.reload();
+    await expect(page.getByPlaceholder("Search by title, tag, or technology...")).toHaveValue("kubernetes");
+    await expect(difficultySelect).toHaveValue("advanced");
+    await expect(page.getByText(/results for/i)).toBeVisible();
+  });
+
+  test("search Category filter: selecting updates the URL, refresh preserves it, clearing removes it", async ({ page }) => {
+    await page.goto("/search");
+    const categorySelect = page.getByLabel("Category");
+    await categorySelect.selectOption("kubernetes");
+    await page.waitForURL(/[?&]category=kubernetes/);
+    await expect(page.locator('a[href^="/questions/kubernetes/"]').first()).toBeVisible();
+    await expect(page.locator('a[href^="/questions/aws/"]')).toHaveCount(0);
+
+    await page.reload();
+    await expect(categorySelect).toHaveValue("kubernetes");
+    await expect(page.locator('a[href^="/questions/kubernetes/"]').first()).toBeVisible();
+
+    await page.getByRole("button", { name: "Clear filters" }).click();
+    await expect(page).not.toHaveURL(/category=/);
+    await expect(categorySelect).toHaveValue("");
+  });
+
+  test("search Interview Level filter: selecting updates the URL, refresh preserves it, clearing removes it", async ({ page }) => {
+    await page.goto("/search");
+    const levelSelect = page.getByLabel("Interview level");
+    await levelSelect.selectOption("senior-devops");
+    await page.waitForURL(/[?&]level=senior-devops/);
+    const countBefore = await page.locator("main a.group").count();
+    expect(countBefore).toBeGreaterThan(0);
+
+    await page.reload();
+    await expect(levelSelect).toHaveValue("senior-devops");
+
+    await page.getByRole("button", { name: "Clear filters" }).click();
+    await expect(page).not.toHaveURL(/level=/);
+    await expect(levelSelect).toHaveValue("");
+  });
+
+  test("search combines keyword + Category + Interview Level + existing filters correctly", async ({ page }) => {
+    await page.goto("/search?q=kubernetes&category=kubernetes&level=senior-devops");
+    await expect(page.getByLabel("Category")).toHaveValue("kubernetes");
+    await expect(page.getByLabel("Interview level")).toHaveValue("senior-devops");
+    await expect(page.locator('a[href^="/questions/kubernetes/"]').first()).toBeVisible();
+    await expect(page.locator('a[href^="/questions/aws/"]')).toHaveCount(0);
+
+    await page.goto("/search?q=terraform&category=terraform&level=devops-engineer");
+    await expect(page.locator('a[href^="/questions/terraform/"]').first()).toBeVisible();
+    await expect(page.locator('a[href^="/questions/kubernetes/"]')).toHaveCount(0);
+
+    await page.goto("/search?type=troubleshooting&difficulty=advanced&category=kubernetes&level=senior-devops");
+    await expect(page.getByLabel("Question type")).toHaveValue("troubleshooting");
+    await expect(page.getByLabel("Difficulty")).toHaveValue("advanced");
+    const links = page.locator('a[href^="/questions/kubernetes/"]');
+    await expect(links.first()).toBeVisible();
+    const count = await links.count();
+    expect(count).toBeGreaterThan(0);
+  });
+
+  test("search pagination preserves all active filters and browser back/forward restores filter state", async ({ page }) => {
+    await page.goto("/search");
+    await page.getByLabel("Category").selectOption("kubernetes");
+    await page.waitForURL(/[?&]category=kubernetes/);
+
+    const pagination = page.getByRole("navigation", { name: "Pagination" });
+    // Kubernetes (128 questions) exceeds the 24-per-page size, so pagination must appear.
+    await expect(pagination).toBeVisible();
+    await pagination.getByRole("link", { name: "Next" }).click();
+    await expect(page).toHaveURL(/category=kubernetes.*page=2|page=2.*category=kubernetes/);
+    await expect(page.getByLabel("Category")).toHaveValue("kubernetes");
+
+    await page.goBack();
+    await expect(page).not.toHaveURL(/page=2/);
+    await expect(page.getByLabel("Category")).toHaveValue("kubernetes");
+
+    await page.goForward();
+    await expect(page).toHaveURL(/page=2/);
+  });
+
+  test("search filter row (5 selects) renders with no horizontal overflow at 375×812, 390×844, and 412×915", async ({ page }) => {
+    for (const viewport of [
+      { width: 375, height: 812 },
+      { width: 390, height: 844 },
+      { width: 412, height: 915 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto("/search");
+      const [scrollWidth, clientWidth] = await page.evaluate(() => [
+        document.documentElement.scrollWidth,
+        document.documentElement.clientWidth,
+      ]);
+      expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
+      await expect(page.getByLabel("Category")).toBeVisible();
+      await expect(page.getByLabel("Interview level")).toBeVisible();
+    }
+  });
+
+  test("search page stays within the max-width container at 1280px and 1440px with the search input prominent", async ({ page }) => {
+    for (const width of [1280, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/search");
+      const mainBox = await page.locator("main").boundingBox();
+      expect(mainBox).not.toBeNull();
+      expect(mainBox!.width).toBeLessThanOrEqual(1153);
+      await expect(page.getByPlaceholder("Search by title, tag, or technology...")).toBeVisible();
+    }
   });
 
   test("difficulty filter narrows a category page via URL params", async ({ page }) => {
@@ -65,6 +205,113 @@ test.describe("DevOps Interview Knowledge Base", () => {
 
     await page.goto("/kubernetes?technology=nonexistent-tech");
     await expect(page.getByText("No questions match these filters yet.")).toBeVisible();
+  });
+
+  test("interview level filter narrows a category page via URL params", async ({ page }) => {
+    await page.goto("/aws");
+    const totalCount = await page.locator("a[href^='/questions/aws/']").count();
+    expect(totalCount).toBeGreaterThan(0);
+
+    await page.goto("/aws?level=cloud-engineer");
+    const filteredCount = await page.locator("a[href^='/questions/aws/']").count();
+    expect(filteredCount).toBeGreaterThan(0);
+    expect(filteredCount).toBeLessThanOrEqual(totalCount);
+  });
+
+  test("category page and technology page for the same slug have distinct titles and distinct question counts", async ({ page }) => {
+    await page.goto("/kubernetes");
+    const categoryTitle = await page.title();
+    const categoryCountText = await page.locator("p.mt-1.text-sm.text-slate-500").first().innerText();
+
+    await page.goto("/technologies/kubernetes");
+    const technologyTitle = await page.title();
+    const technologyCountText = await page.locator("p.mt-1.text-sm.text-slate-500").first().innerText();
+
+    // Distinct scopes: the category page is `category: kubernetes` only; the technology page
+    // aggregates the "kubernetes" technology tag across every category it appears in — so the
+    // two pages must never share an identical <title>, and here their counts genuinely differ.
+    expect(categoryTitle).not.toBe(technologyTitle);
+    expect(technologyTitle).toContain("All Categories");
+    expect(categoryCountText).not.toBe(technologyCountText);
+  });
+
+  test("difficulty page paginates like every other list page instead of rendering the full set at once", async ({ page }) => {
+    const response = await page.goto("/difficulty/advanced");
+    expect(response?.status()).toBe(200);
+    const cardsOnPageOne = await page.locator("a[href^='/questions/']").count();
+    expect(cardsOnPageOne).toBeLessThanOrEqual(24);
+
+    const pagination = page.getByRole("navigation", { name: "Pagination" });
+    await expect(pagination).toBeVisible();
+    await expect(pagination.getByText(/Page 1 of \d+/)).toBeVisible();
+    await pagination.getByRole("link", { name: "Next" }).click();
+    await expect(page).toHaveURL(/\/difficulty\/advanced\?page=2/);
+  });
+
+  test("question type page loads and aggregates across multiple categories", async ({ page }) => {
+    const response = await page.goto("/type/troubleshooting");
+    expect(response?.status()).toBe(200);
+    await expect(page.getByRole("heading", { name: /Troubleshooting Interview Questions — All Categories/ })).toBeVisible();
+    await expect(page.getByText(/questions across \d+ categories/)).toBeVisible();
+    await expect(page.locator("a[href^='/questions/']").first()).toBeVisible();
+  });
+
+  test("question type page filters by interview level via URL params", async ({ page }) => {
+    await page.goto("/type/troubleshooting");
+    const totalCount = await page.locator("a[href^='/questions/']").count();
+    expect(totalCount).toBeGreaterThan(0);
+
+    await page.goto("/type/troubleshooting?level=senior-devops");
+    const filteredCount = await page.locator("a[href^='/questions/']").count();
+    expect(filteredCount).toBeGreaterThan(0);
+    expect(filteredCount).toBeLessThanOrEqual(totalCount);
+  });
+
+  test("thin question type page renders but is noindexed", async ({ page }) => {
+    const response = await page.goto("/type/behavioral");
+    expect(response?.status()).toBe(200);
+    await expect(page.getByRole("heading", { name: /Behavioral Interview Questions — All Categories/ })).toBeVisible();
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+  });
+
+  test("indexable question type page is not noindexed", async ({ page }) => {
+    await page.goto("/type/troubleshooting");
+    await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
+  });
+
+  test("interview level page loads and aggregates across multiple categories", async ({ page }) => {
+    const response = await page.goto("/level/senior-devops");
+    expect(response?.status()).toBe(200);
+    await expect(page.getByRole("heading", { name: /Senior DevOps Interview Questions/ })).toBeVisible();
+    await expect(page.getByText(/questions across \d+ categories/)).toBeVisible();
+    await expect(page.locator("a[href^='/questions/']").first()).toBeVisible();
+  });
+
+  test("interview level page filters by question type via URL params", async ({ page }) => {
+    await page.goto("/level/senior-devops");
+    const totalCount = await page.locator("a[href^='/questions/']").count();
+    expect(totalCount).toBeGreaterThan(0);
+
+    await page.goto("/level/senior-devops?type=troubleshooting");
+    const filteredCount = await page.locator("a[href^='/questions/']").count();
+    expect(filteredCount).toBeGreaterThan(0);
+    expect(filteredCount).toBeLessThanOrEqual(totalCount);
+  });
+
+  test("homepage links to question type and interview level pages", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByRole("heading", { name: "Browse by Question Type" })).toBeVisible();
+    await expect(page.locator('a[href^="/type/"]').first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Browse by Interview Level" })).toBeVisible();
+    await expect(page.locator('a[href="/level/senior-devops"]')).toBeVisible();
+  });
+
+  test("sitemap includes new type and level pages", async ({ request }) => {
+    const res = await request.get("/sitemap.xml");
+    const body = await res.text();
+    expect(body).toContain("/type/troubleshooting");
+    expect(body).toContain("/level/senior-devops");
+    expect(body).not.toContain("/type/behavioral");
   });
 
   test("question card links navigate to the question page", async ({ page }) => {
@@ -174,6 +421,11 @@ test.describe("DevOps Interview Knowledge Base", () => {
   test("review only toggle narrows the pool to cards marked for review", async ({ page }) => {
     await page.goto("/practice");
     await page.getByRole("combobox").first().selectOption({ label: "Helm" });
+    // Wait for the category filter's URL (and therefore the Helm-filtered card pool) to actually
+    // settle before marking a card — otherwise, under load, "Need Review" can race ahead of the
+    // filter change and mark a card from the still-unfiltered "All categories" pool instead of a
+    // Helm one, which would make "Card 1 of 1" below never appear (the real root cause of the flake).
+    await page.waitForURL(/[?&]category=helm/);
     await page.getByRole("button", { name: "Reveal Answer" }).click();
     await page.getByRole("button", { name: "Need Review" }).click();
 
@@ -186,12 +438,881 @@ test.describe("DevOps Interview Knowledge Base", () => {
     await expect(page.getByText("Nothing marked for review with these filters.")).toBeVisible();
   });
 
+  test("guides landing page loads and links to all four guides", async ({ page }) => {
+    const response = await page.goto("/guides");
+    expect(response?.status()).toBe(200);
+    await expect(page.getByRole("heading", { name: "DevOps Interview Guides" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Kubernetes Interview Guide" })).toBeVisible();
+    await expect(page.locator('a[href="/guides/kubernetes-interview-guide"]')).toBeVisible();
+    await expect(page.getByRole("heading", { name: "AWS DevOps Interview Guide" })).toBeVisible();
+    await expect(page.locator('a[href="/guides/aws-devops-interview-guide"]')).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Terraform Interview Guide" })).toBeVisible();
+    await expect(page.locator('a[href="/guides/terraform-interview-guide"]')).toBeVisible();
+    await expect(page.getByRole("heading", { level: 3, name: "DevOps Interview Guide", exact: true })).toBeVisible();
+    await expect(page.locator('a[href="/guides/devops-interview-guide"]')).toBeVisible();
+  });
+
+  test("guides landing page visually separates the umbrella DevOps Guide (Start Here) from the three focused technology guides", async ({ page }) => {
+    await page.goto("/guides");
+    const startHere = page.locator("div").filter({ has: page.getByRole("heading", { level: 2, name: "Start Here" }) }).last();
+    await expect(startHere).toBeVisible();
+    await expect(startHere.getByRole("heading", { level: 3, name: "DevOps Interview Guide", exact: true })).toBeVisible();
+    // The three single-technology guides must NOT appear inside Start Here.
+    await expect(startHere.getByRole("heading", { level: 3, name: "Kubernetes Interview Guide" })).toHaveCount(0);
+
+    const focused = page
+      .locator("div")
+      .filter({ has: page.getByRole("heading", { level: 2, name: "Focused Technology Guides" }) })
+      .last();
+    await expect(focused).toBeVisible();
+    for (const name of ["Kubernetes Interview Guide", "AWS DevOps Interview Guide", "Terraform Interview Guide"]) {
+      await expect(focused.getByRole("heading", { level: 3, name })).toBeVisible();
+    }
+    await expect(focused.getByRole("heading", { level: 3, name: "DevOps Interview Guide", exact: true })).toHaveCount(0);
+  });
+
+  test("Guides nav link navigates to the guides landing page", async ({ page }) => {
+    await page.goto("/");
+    await page.locator("nav").getByRole("link", { name: "Guides", exact: true }).click();
+    await expect(page).toHaveURL(/\/guides$/);
+    await expect(page.getByRole("heading", { name: "DevOps Interview Guides" })).toBeVisible();
+  });
+
+  test("Kubernetes guide detail page loads with all required sections and structured data", async ({ page }) => {
+    const response = await page.goto("/guides/kubernetes-interview-guide");
+    expect(response?.status()).toBe(200);
+    await expect(page.getByRole("heading", { level: 1, name: "Kubernetes Interview Guide" })).toBeVisible();
+
+    for (const heading of [
+      "Who This Guide Is For",
+      "Prerequisites",
+      "Learning / Interview Path",
+      "Key Concepts",
+      "Interview Focus",
+      "Practice Questions",
+      "Scenario & Troubleshooting Focus",
+      "Common Mistakes",
+      "Recommended Preparation Path",
+      "Related Guides",
+    ]) {
+      await expect(page.getByRole("heading", { level: 2, name: heading })).toBeVisible();
+    }
+
+    await expect(page.getByText("128 linked questions")).toBeVisible();
+
+    const jsonLdTypes = await page.locator('script[type="application/ld+json"]').allTextContents();
+    const types = jsonLdTypes.map((json) => JSON.parse(json)["@type"]);
+    expect(types).toContain("BreadcrumbList");
+    expect(types).toContain("TechArticle");
+  });
+
+  test("guide Practice Questions section reflects the live question bank dynamically", async ({ page }) => {
+    await page.goto("/guides/kubernetes-interview-guide");
+    await expect(page.getByRole("heading", { level: 3, name: "Must Practice" })).toBeVisible();
+    // The 8 curated featured_questions should each render as a real link into the question bank.
+    const mustPracticeLinks = page.locator("h3", { hasText: "Must Practice" }).locator("xpath=following-sibling::ul[1]//a");
+    await expect(mustPracticeLinks).toHaveCount(8);
+
+    await expect(page.getByRole("link", { name: /Beginner \(\d+\)/ })).toHaveAttribute("href", "/kubernetes?difficulty=beginner");
+    await expect(page.getByRole("link", { name: /Troubleshooting \(\d+\)/ })).toHaveAttribute(
+      "href",
+      "/type/troubleshooting?category=kubernetes",
+    );
+  });
+
+  test("guide's difficulty filter link lands on a correctly pre-filtered category page", async ({ page }) => {
+    await page.goto("/guides/kubernetes-interview-guide");
+    await page.getByRole("link", { name: /Beginner \(\d+\)/ }).click();
+    await expect(page).toHaveURL(/\/kubernetes\?difficulty=beginner/);
+    await expect(page.locator("a[href^='/questions/kubernetes/']").first()).toBeVisible();
+  });
+
+  test("guide's interview level links surface a preparation path per level, appearing exactly once", async ({ page }) => {
+    await page.goto("/guides/kubernetes-interview-guide");
+    const heading = page.getByRole("heading", { level: 3, name: "Prepare by Interview Level" });
+    await expect(heading).toBeVisible();
+    await expect(heading).toHaveCount(1);
+    const seniorLink = page.locator('a[href="/level/senior-devops?category=kubernetes"]').first();
+    await expect(seniorLink).toBeVisible();
+    await seniorLink.click();
+    await expect(page).toHaveURL(/\/level\/senior-devops\?category=kubernetes/);
+    await expect(page.getByRole("heading", { name: /Senior DevOps Interview Questions/ })).toBeVisible();
+  });
+
+  test("Practice Questions sections appear in the intended quick-start-to-deep-practice order", async ({ page }) => {
+    await page.goto("/guides/kubernetes-interview-guide");
+    const order = ["Must Practice", "By Subcategory", "Prepare by Interview Level", "By Difficulty", "By Question Type"];
+    const positions = await Promise.all(
+      order.map(async (name) => {
+        const box = await page.getByRole("heading", { level: 3, name }).boundingBox();
+        expect(box, `expected a visible heading for "${name}"`).not.toBeNull();
+        return box!.y;
+      }),
+    );
+    for (let i = 1; i < positions.length; i++) {
+      expect(positions[i], `${order[i]} should appear after ${order[i - 1]}`).toBeGreaterThan(positions[i - 1]!);
+    }
+  });
+
+  test("jump-to navigation links to each Practice Questions subsection by anchor", async ({ page }) => {
+    await page.goto("/guides/kubernetes-interview-guide");
+    const jumpNav = page.getByRole("navigation", { name: "Jump to a practice section" });
+    await expect(jumpNav.getByRole("link", { name: "Must Practice" })).toHaveAttribute("href", "#must-practice");
+    await expect(jumpNav.getByRole("link", { name: "By Subcategory" })).toHaveAttribute("href", "#by-subcategory");
+    await expect(jumpNav.getByRole("link", { name: "Prepare by Interview Level" })).toHaveAttribute(
+      "href",
+      "#prepare-by-level",
+    );
+    await expect(jumpNav.getByRole("link", { name: "By Difficulty" })).toHaveAttribute("href", "#by-difficulty");
+    await expect(jumpNav.getByRole("link", { name: "By Question Type" })).toHaveAttribute("href", "#by-question-type");
+
+    await jumpNav.getByRole("link", { name: "By Subcategory" }).click();
+    await expect(page).toHaveURL(/#by-subcategory$/);
+  });
+
+  test("a subcategory with only one question still renders an intentional-looking card", async ({ page }) => {
+    await page.goto("/guides/kubernetes-interview-guide");
+    const fundamentalsCard = page
+      .locator("div.rounded-lg")
+      .filter({ has: page.getByRole("heading", { level: 4, name: "Fundamentals" }) });
+    await expect(fundamentalsCard).toBeVisible();
+    await expect(fundamentalsCard.getByText("1", { exact: true })).toBeVisible();
+    await expect(fundamentalsCard.locator("ul a")).toHaveCount(1);
+    await expect(fundamentalsCard.getByRole("link", { name: /View all 1 question →/ })).toBeVisible();
+  });
+
+  test("By Subcategory renders as a card grid, ordered to match the Learning Path, with representative questions and a View all CTA", async ({
+    page,
+  }) => {
+    await page.goto("/guides/kubernetes-interview-guide");
+    await expect(page.getByRole("heading", { level: 3, name: "By Subcategory" })).toBeVisible();
+
+    const cardHeadings = page.getByRole("heading", { level: 4 });
+    await expect(cardHeadings).toHaveCount(14);
+    // Ordered to mirror the Learning / Interview Path (fundamentals first), not largest-group-first.
+    await expect(cardHeadings.first()).toHaveText("Fundamentals");
+    await expect(cardHeadings.last()).toHaveText("Troubleshooting");
+
+    const networkingCard = page.locator("div.rounded-lg").filter({ has: page.getByRole("heading", { level: 4, name: "Networking" }) });
+    await expect(networkingCard.getByText("14", { exact: true })).toBeVisible();
+    // 2-3 representative example questions, not the full 14.
+    const exampleLinks = networkingCard.locator("ul a");
+    const exampleCount = await exampleLinks.count();
+    expect(exampleCount).toBeGreaterThanOrEqual(2);
+    expect(exampleCount).toBeLessThanOrEqual(3);
+
+    const viewAll = networkingCard.getByRole("link", { name: /View all 14 questions/ });
+    await expect(viewAll).toHaveAttribute("href", "/kubernetes?subcategory=networking");
+  });
+
+  test("By Subcategory card links navigate to a correctly filtered category page", async ({ page }) => {
+    await page.goto("/guides/kubernetes-interview-guide");
+    const networkingCard = page.locator("div.rounded-lg").filter({ has: page.getByRole("heading", { level: 4, name: "Networking" }) });
+    await networkingCard.getByRole("link", { name: /View all 14 questions/ }).click();
+    await expect(page).toHaveURL(/\/kubernetes\?subcategory=networking/);
+    const results = page.locator("a[href^='/questions/kubernetes/networking/']");
+    await expect(results.first()).toBeVisible();
+    await expect(results).toHaveCount(14);
+  });
+
+  test("By Subcategory grid is 2 columns on desktop and does not disturb the rest of Practice Questions", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/guides/kubernetes-interview-guide");
+    const cardHeadings = page.getByRole("heading", { level: 4 });
+    const first = await cardHeadings.nth(0).boundingBox();
+    const second = await cardHeadings.nth(1).boundingBox();
+    expect(first).not.toBeNull();
+    expect(second).not.toBeNull();
+    // Same row: roughly equal y, clearly different x.
+    expect(Math.abs(first!.y - second!.y)).toBeLessThan(10);
+    expect(Math.abs(first!.x - second!.x)).toBeGreaterThan(100);
+
+    // Rest of Practice Questions is unchanged by the redesign.
+    await expect(page.getByRole("heading", { level: 3, name: "Must Practice" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 3, name: "By Difficulty" })).toBeVisible();
+  });
+
+  test("By Subcategory grid is single-column with no horizontal overflow at 375×812, 390×844, and 412×915", async ({ page }) => {
+    for (const viewport of [
+      { width: 375, height: 812 },
+      { width: 390, height: 844 },
+      { width: 412, height: 915 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto("/guides/kubernetes-interview-guide");
+
+      const [scrollWidth, clientWidth] = await page.evaluate(() => [
+        document.documentElement.scrollWidth,
+        document.documentElement.clientWidth,
+      ]);
+      expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
+
+      const cardHeadings = page.getByRole("heading", { level: 4 });
+      const first = await cardHeadings.nth(0).boundingBox();
+      const second = await cardHeadings.nth(1).boundingBox();
+      expect(first).not.toBeNull();
+      expect(second).not.toBeNull();
+      // Single column: stacked, not side-by-side.
+      expect(second!.y).toBeGreaterThan(first!.y + 10);
+    }
+  });
+
+  test("desktop content width and card layout stay comfortable at 1280px and 1440px", async ({ page }) => {
+    for (const width of [1280, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/guides/kubernetes-interview-guide");
+
+      const [scrollWidth, clientWidth] = await page.evaluate(() => [
+        document.documentElement.scrollWidth,
+        document.documentElement.clientWidth,
+      ]);
+      expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
+
+      // The site wraps content in a max-w-6xl (1152px) container — it shouldn't stretch edge-to-edge on a wide viewport.
+      const mainBox = await page.locator("main").boundingBox();
+      expect(mainBox).not.toBeNull();
+      expect(mainBox!.width).toBeLessThanOrEqual(1153);
+
+      // Two-column grid: no single subcategory card should approach the full viewport width.
+      const networkingCard = page
+        .locator("div.rounded-lg")
+        .filter({ has: page.getByRole("heading", { level: 4, name: "Networking" }) });
+      const cardBox = await networkingCard.boundingBox();
+      expect(cardBox).not.toBeNull();
+      expect(cardBox!.width).toBeLessThan(width / 2 + 60);
+    }
+  });
+
+  test("AWS guide detail page loads with all required sections and structured data", async ({ page }) => {
+    const response = await page.goto("/guides/aws-devops-interview-guide");
+    expect(response?.status()).toBe(200);
+    await expect(page.getByRole("heading", { level: 1, name: "AWS DevOps Interview Guide" })).toBeVisible();
+
+    for (const heading of [
+      "Who This Guide Is For",
+      "Prerequisites",
+      "Learning / Interview Path",
+      "Key Concepts",
+      "Interview Focus",
+      "Practice Questions",
+      "Scenario & Troubleshooting Focus",
+      "Common Mistakes",
+      "Recommended Preparation Path",
+      "Related Guides",
+    ]) {
+      await expect(page.getByRole("heading", { level: 2, name: heading })).toBeVisible();
+    }
+
+    await expect(page.getByText("39 linked questions")).toBeVisible();
+
+    const jsonLdTypes = await page.locator('script[type="application/ld+json"]').allTextContents();
+    const types = jsonLdTypes.map((json) => JSON.parse(json)["@type"]);
+    expect(types).toContain("BreadcrumbList");
+    expect(types).toContain("TechArticle");
+
+    // Cross-links to the Kubernetes guide via related_guides.
+    await expect(page.locator('a[href="/guides/kubernetes-interview-guide"]')).toBeVisible();
+  });
+
+  test("AWS guide's By Subcategory has exactly 3 cards (iam, lambda, s3), ordered per its Learning Path, each with the correct count", async ({
+    page,
+  }) => {
+    await page.goto("/guides/aws-devops-interview-guide");
+    const cardHeadings = page.getByRole("heading", { level: 4 });
+    await expect(cardHeadings).toHaveCount(3);
+    await expect(cardHeadings.nth(0)).toHaveText("IAM");
+    await expect(cardHeadings.nth(1)).toHaveText("Lambda");
+    await expect(cardHeadings.nth(2)).toHaveText("S3");
+
+    for (const [name, count] of [
+      ["IAM", 13],
+      ["Lambda", 13],
+      ["S3", 13],
+    ] as const) {
+      const card = page.locator("div.rounded-lg").filter({ has: page.getByRole("heading", { level: 4, name }) });
+      await expect(card.getByText(String(count), { exact: true })).toBeVisible();
+      await expect(card.getByRole("link", { name: new RegExp(`View all ${count} questions`) })).toBeVisible();
+    }
+  });
+
+  test("AWS guide's subcategory card links navigate to a correctly filtered AWS category page", async ({ page }) => {
+    await page.goto("/guides/aws-devops-interview-guide");
+    const lambdaCard = page.locator("div.rounded-lg").filter({ has: page.getByRole("heading", { level: 4, name: "Lambda" }) });
+    await lambdaCard.getByRole("link", { name: /View all 13 questions/ }).click();
+    await expect(page).toHaveURL(/\/aws\?subcategory=lambda/);
+    const results = page.locator("a[href^='/questions/aws/lambda/']");
+    await expect(results.first()).toBeVisible();
+    await expect(results).toHaveCount(13);
+  });
+
+  test("AWS guide's Must Practice section has 8 real, distinct question links", async ({ page }) => {
+    await page.goto("/guides/aws-devops-interview-guide");
+    const mustPracticeLinks = page
+      .locator("h3", { hasText: "Must Practice" })
+      .locator("xpath=following-sibling::ul[1]//a");
+    await expect(mustPracticeLinks).toHaveCount(8);
+    const hrefs = await mustPracticeLinks.evaluateAll((links) => links.map((l) => l.getAttribute("href")));
+    expect(new Set(hrefs).size).toBe(8);
+    for (const href of hrefs) expect(href).toMatch(/^\/questions\/aws\//);
+  });
+
+  test("AWS guide's Prepare by Interview Level shows only levels with actual AWS questions", async ({ page }) => {
+    await page.goto("/guides/aws-devops-interview-guide");
+    const levelSection = page.locator("#prepare-by-level");
+    for (const level of ["Devops Engineer", "Senior Devops", "Cloud Engineer", "Devsecops", "Staff / Principal"]) {
+      await expect(levelSection.getByRole("link", { name: new RegExp(level, "i") })).toBeVisible();
+    }
+    // No junior-devops, SRE, or Platform Engineer questions exist for AWS — those pills must not appear.
+    await expect(levelSection.getByRole("link", { name: /Junior Devops/i })).toHaveCount(0);
+    await expect(levelSection.getByRole("link", { name: /^SRE/i })).toHaveCount(0);
+    await expect(levelSection.getByRole("link", { name: /Platform Engineer/i })).toHaveCount(0);
+  });
+
+  test("AWS guide's By Difficulty omits Beginner, since no beginner-difficulty AWS questions exist", async ({ page }) => {
+    await page.goto("/guides/aws-devops-interview-guide");
+    const difficultySection = page.locator("#by-difficulty");
+    await expect(difficultySection.getByRole("link", { name: /Intermediate/ })).toBeVisible();
+    await expect(difficultySection.getByRole("link", { name: /Advanced/ })).toBeVisible();
+    await expect(difficultySection.getByRole("link", { name: /^Beginner/ })).toHaveCount(0);
+  });
+
+  test("AWS guide renders correctly at mobile viewports with no horizontal overflow", async ({ page }) => {
+    for (const viewport of [
+      { width: 375, height: 812 },
+      { width: 390, height: 844 },
+      { width: 412, height: 915 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto("/guides/aws-devops-interview-guide");
+      const [scrollWidth, clientWidth] = await page.evaluate(() => [
+        document.documentElement.scrollWidth,
+        document.documentElement.clientWidth,
+      ]);
+      expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
+      await expect(page.getByRole("heading", { level: 4, name: "Lambda" })).toBeVisible();
+    }
+  });
+
+  test("AWS guide stays within the max-width container at 1280px and 1440px", async ({ page }) => {
+    for (const width of [1280, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/guides/aws-devops-interview-guide");
+      const mainBox = await page.locator("main").boundingBox();
+      expect(mainBox).not.toBeNull();
+      expect(mainBox!.width).toBeLessThanOrEqual(1153);
+    }
+  });
+
+  test("Terraform guide detail page loads with all required sections and structured data", async ({ page }) => {
+    const response = await page.goto("/guides/terraform-interview-guide");
+    expect(response?.status()).toBe(200);
+    await expect(page.getByRole("heading", { level: 1, name: "Terraform Interview Guide" })).toBeVisible();
+
+    for (const heading of [
+      "Who This Guide Is For",
+      "Prerequisites",
+      "Learning / Interview Path",
+      "Key Concepts",
+      "Interview Focus",
+      "Practice Questions",
+      "Scenario & Troubleshooting Focus",
+      "Common Mistakes",
+      "Recommended Preparation Path",
+      "Related Guides",
+    ]) {
+      await expect(page.getByRole("heading", { level: 2, name: heading })).toBeVisible();
+    }
+
+    await expect(page.getByText("22 linked questions")).toBeVisible();
+
+    const jsonLdTypes = await page.locator('script[type="application/ld+json"]').allTextContents();
+    const types = jsonLdTypes.map((json) => JSON.parse(json)["@type"]);
+    expect(types).toContain("BreadcrumbList");
+    expect(types).toContain("TechArticle");
+
+    // Cross-links to both existing guides via related_guides.
+    await expect(page.locator('a[href="/guides/aws-devops-interview-guide"]')).toBeVisible();
+    await expect(page.locator('a[href="/guides/kubernetes-interview-guide"]')).toBeVisible();
+  });
+
+  test("Terraform guide's By Subcategory has exactly 3 cards (providers, modules, state), ordered per its Learning Path, with correct counts", async ({
+    page,
+  }) => {
+    await page.goto("/guides/terraform-interview-guide");
+    const cardHeadings = page.getByRole("heading", { level: 4 });
+    await expect(cardHeadings).toHaveCount(3);
+    await expect(cardHeadings.nth(0)).toHaveText("Providers");
+    await expect(cardHeadings.nth(1)).toHaveText("Modules");
+    await expect(cardHeadings.nth(2)).toHaveText("State");
+
+    for (const [name, count] of [
+      ["Providers", 9],
+      ["Modules", 4],
+      ["State", 9],
+    ] as const) {
+      const card = page.locator("div.rounded-lg").filter({ has: page.getByRole("heading", { level: 4, name }) });
+      await expect(card.getByText(String(count), { exact: true })).toBeVisible();
+      await expect(card.getByRole("link", { name: new RegExp(`View all ${count} questions`) })).toBeVisible();
+    }
+  });
+
+  test("Terraform guide's subcategory card links navigate to a correctly filtered Terraform category page", async ({ page }) => {
+    await page.goto("/guides/terraform-interview-guide");
+    const stateCard = page.locator("div.rounded-lg").filter({ has: page.getByRole("heading", { level: 4, name: "State" }) });
+    await stateCard.getByRole("link", { name: /View all 9 questions/ }).click();
+    await expect(page).toHaveURL(/\/terraform\?subcategory=state/);
+    const results = page.locator("a[href^='/questions/terraform/state/']");
+    await expect(results.first()).toBeVisible();
+    await expect(results).toHaveCount(9);
+  });
+
+  test("Terraform guide's Must Practice section has 8 real, distinct question links", async ({ page }) => {
+    await page.goto("/guides/terraform-interview-guide");
+    const mustPracticeLinks = page
+      .locator("h3", { hasText: "Must Practice" })
+      .locator("xpath=following-sibling::ul[1]//a");
+    await expect(mustPracticeLinks).toHaveCount(8);
+    const hrefs = await mustPracticeLinks.evaluateAll((links) => links.map((l) => l.getAttribute("href")));
+    expect(new Set(hrefs).size).toBe(8);
+    for (const href of hrefs) expect(href).toMatch(/^\/questions\/terraform\//);
+  });
+
+  test("Terraform guide's Prepare by Interview Level shows only levels with actual Terraform questions", async ({ page }) => {
+    await page.goto("/guides/terraform-interview-guide");
+    const levelSection = page.locator("#prepare-by-level");
+    for (const level of ["Devops Engineer", "Senior Devops", "Devsecops", "Staff / Principal"]) {
+      await expect(levelSection.getByRole("link", { name: new RegExp(level, "i") })).toBeVisible();
+    }
+    // No junior-devops, SRE, Platform Engineer, or Cloud Engineer questions exist for Terraform.
+    await expect(levelSection.getByRole("link", { name: /Junior Devops/i })).toHaveCount(0);
+    await expect(levelSection.getByRole("link", { name: /^SRE/i })).toHaveCount(0);
+    await expect(levelSection.getByRole("link", { name: /Platform Engineer/i })).toHaveCount(0);
+    await expect(levelSection.getByRole("link", { name: /Cloud Engineer/i })).toHaveCount(0);
+  });
+
+  test("Terraform guide's By Difficulty shows only Intermediate and Advanced", async ({ page }) => {
+    await page.goto("/guides/terraform-interview-guide");
+    const difficultySection = page.locator("#by-difficulty");
+    await expect(difficultySection.getByRole("link", { name: /Intermediate/ })).toBeVisible();
+    await expect(difficultySection.getByRole("link", { name: /Advanced/ })).toBeVisible();
+    await expect(difficultySection.getByRole("link", { name: /^Beginner/ })).toHaveCount(0);
+    await expect(difficultySection.getByRole("link", { name: /^Expert/ })).toHaveCount(0);
+  });
+
+  test("Terraform guide renders correctly at mobile viewports with no horizontal overflow", async ({ page }) => {
+    for (const viewport of [
+      { width: 375, height: 812 },
+      { width: 390, height: 844 },
+      { width: 412, height: 915 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto("/guides/terraform-interview-guide");
+      const [scrollWidth, clientWidth] = await page.evaluate(() => [
+        document.documentElement.scrollWidth,
+        document.documentElement.clientWidth,
+      ]);
+      expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
+      await expect(page.getByRole("heading", { level: 4, name: "State" })).toBeVisible();
+    }
+  });
+
+  test("Terraform guide stays within the max-width container at 1280px and 1440px", async ({ page }) => {
+    for (const width of [1280, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/guides/terraform-interview-guide");
+      const mainBox = await page.locator("main").boundingBox();
+      expect(mainBox).not.toBeNull();
+      expect(mainBox!.width).toBeLessThanOrEqual(1153);
+    }
+  });
+
+  test("DevOps guide detail page loads with all required sections and structured data", async ({ page }) => {
+    const response = await page.goto("/guides/devops-interview-guide");
+    expect(response?.status()).toBe(200);
+    await expect(page.getByRole("heading", { level: 1, name: "DevOps Interview Guide" })).toBeVisible();
+
+    for (const heading of [
+      "Who This Guide Is For",
+      "Prerequisites",
+      "Learning / Interview Path",
+      "Key Concepts",
+      "Interview Focus",
+      "Practice Questions",
+      "Scenario & Troubleshooting Focus",
+      "Common Mistakes",
+      "Recommended Preparation Path",
+      "Related Guides",
+    ]) {
+      await expect(page.getByRole("heading", { level: 2, name: heading })).toBeVisible();
+    }
+
+    await expect(page.getByText("566 linked questions")).toBeVisible();
+
+    const jsonLdTypes = await page.locator('script[type="application/ld+json"]').allTextContents();
+    const types = jsonLdTypes.map((json) => JSON.parse(json)["@type"]);
+    expect(types).toContain("BreadcrumbList");
+    expect(types).toContain("TechArticle");
+
+    // Cross-links to all three existing single-technology guides, resolved via related_guides
+    // into the dedicated Related Guides card list (in addition to any inline prose links above it).
+    const relatedGuidesSection = page.locator("section", {
+      has: page.getByRole("heading", { level: 2, name: "Related Guides" }),
+    });
+    await expect(relatedGuidesSection.locator('a[href="/guides/kubernetes-interview-guide"]').last()).toBeVisible();
+    await expect(relatedGuidesSection.locator('a[href="/guides/aws-devops-interview-guide"]').last()).toBeVisible();
+    await expect(relatedGuidesSection.locator('a[href="/guides/terraform-interview-guide"]').last()).toBeVisible();
+  });
+
+  test("DevOps guide's By Domain renders all 16 domains, in configuration order, with correct live-derived counts", async ({ page }) => {
+    await page.goto("/guides/devops-interview-guide");
+    const jumpNav = page.getByRole("navigation", { name: "Jump to a practice section" });
+    await expect(jumpNav.getByRole("link", { name: "By Domain" })).toHaveAttribute("href", "#by-domain");
+    await expect(page.locator("#by-subcategory")).toHaveCount(0);
+
+    const domainSection = page.locator("#by-domain");
+    const cardHeadings = domainSection.getByRole("heading", { level: 4 });
+    await expect(cardHeadings).toHaveCount(16);
+
+    const expected: [string, number][] = [
+      ["Foundations", 52],
+      ["Source Control & Collaboration", 30],
+      ["CI/CD", 44],
+      ["Containers", 29],
+      ["Orchestration", 142],
+      ["Infrastructure as Code", 40],
+      ["Cloud", 96],
+      ["Security", 24],
+      ["Observability & SRE", 34],
+      ["GitOps", 23],
+      ["Platform Engineering", 10],
+      ["Networking", 10],
+      ["Databases", 10],
+      ["Architecture & System Design", 8],
+      ["Real-World Scenarios", 10],
+      ["Troubleshooting", 4],
+    ];
+    for (let i = 0; i < expected.length; i++) {
+      await expect(cardHeadings.nth(i)).toHaveText(expected[i]![0]);
+    }
+    let total = 0;
+    for (const [name, count] of expected) {
+      total += count;
+      const card = domainSection.locator("div.rounded-lg").filter({ has: page.getByRole("heading", { level: 4, name }) });
+      await expect(card.getByText(String(count), { exact: true })).toBeVisible();
+    }
+    expect(total).toBe(566);
+  });
+
+  test("DevOps guide's domain cards list constituent categories, each linking to its own existing category page — no /domain/ route exists", async ({ page }) => {
+    await page.goto("/guides/devops-interview-guide");
+    const cicdCard = page
+      .locator("#by-domain div.rounded-lg")
+      .filter({ has: page.getByRole("heading", { level: 4, name: "CI/CD" }) });
+    for (const [category, count] of [
+      ["github-actions", 10],
+      ["gitlab-ci", 10],
+      ["jenkins", 10],
+      ["azure-pipelines", 10],
+      ["cicd", 4],
+    ] as const) {
+      const link = cicdCard.locator(`a[href="/${category}"]`);
+      await expect(link).toBeVisible();
+      await expect(link).toContainText(String(count));
+    }
+    await cicdCard.locator('a[href="/github-actions"]').click();
+    await expect(page).toHaveURL(/\/github-actions$/);
+    await expect(page.locator("a[href^='/questions/github-actions/']").first()).toBeVisible();
+
+    const response = await page.goto("/domain/cicd");
+    expect(response?.status()).toBe(404);
+  });
+
+  test("DevOps guide's Must Practice section has 18 real, distinct question links across domains", async ({ page }) => {
+    await page.goto("/guides/devops-interview-guide");
+    const mustPracticeLinks = page
+      .locator("h3", { hasText: "Must Practice" })
+      .locator("xpath=following-sibling::ul[1]//a");
+    await expect(mustPracticeLinks).toHaveCount(18);
+    const hrefs = await mustPracticeLinks.evaluateAll((links) => links.map((l) => l.getAttribute("href")));
+    expect(new Set(hrefs).size).toBe(18);
+  });
+
+  test("DevOps guide's Prepare by Interview Level shows all 8 interview levels, unfiltered by category", async ({ page }) => {
+    await page.goto("/guides/devops-interview-guide");
+    const levelSection = page.locator("#prepare-by-level");
+    for (const level of [
+      "Junior Devops",
+      "Devops Engineer",
+      "Senior Devops",
+      "SRE",
+      "Platform Engineer",
+      "Cloud Engineer",
+      "Devsecops",
+      "Staff / Principal",
+    ]) {
+      const link = levelSection.getByRole("link", { name: new RegExp(level, "i") });
+      await expect(link).toBeVisible();
+      const href = await link.getAttribute("href");
+      expect(href).toMatch(/^\/level\/[a-z-]+$/);
+    }
+  });
+
+  test("DevOps guide's By Difficulty falls back to /difficulty/[level] links (no single category to filter by)", async ({ page }) => {
+    await page.goto("/guides/devops-interview-guide");
+    const difficultySection = page.locator("#by-difficulty");
+    for (const [name, slug] of [
+      ["Beginner", "beginner"],
+      ["Intermediate", "intermediate"],
+      ["Advanced", "advanced"],
+      ["Expert", "expert"],
+    ] as const) {
+      const link = difficultySection.getByRole("link", { name: new RegExp(`^${name}`) });
+      await expect(link).toHaveAttribute("href", `/difficulty/${slug}`);
+    }
+    await difficultySection.getByRole("link", { name: /^Expert/ }).click();
+    await expect(page).toHaveURL(/\/difficulty\/expert/);
+  });
+
+  test("DevOps guide's By Question Type links to /type/[type] without a category filter", async ({ page }) => {
+    await page.goto("/guides/devops-interview-guide");
+    const typeSection = page.locator("#by-question-type");
+    const troubleshootingLink = typeSection.getByRole("link", { name: /Troubleshooting/ });
+    await expect(troubleshootingLink).toHaveAttribute("href", "/type/troubleshooting");
+    await expect(troubleshootingLink).toContainText("130");
+  });
+
+  test("DevOps guide's Scenario & Troubleshooting Focus distinguishes the 4-question Troubleshooting domain from the 130-question cross-cutting troubleshooting type", async ({ page }) => {
+    await page.goto("/guides/devops-interview-guide");
+    const section = page.locator("section", { has: page.getByRole("heading", { level: 2, name: "Scenario & Troubleshooting Focus" }) });
+    await expect(section.getByText("4", { exact: true })).toBeVisible();
+    await expect(section.getByText("130", { exact: true })).toBeVisible();
+  });
+
+  test("DevOps guide renders correctly at mobile viewports with no horizontal overflow", async ({ page }) => {
+    for (const viewport of [
+      { width: 375, height: 812 },
+      { width: 390, height: 844 },
+      { width: 412, height: 915 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto("/guides/devops-interview-guide");
+      const [scrollWidth, clientWidth] = await page.evaluate(() => [
+        document.documentElement.scrollWidth,
+        document.documentElement.clientWidth,
+      ]);
+      expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
+      await expect(page.getByRole("heading", { level: 4, name: "Orchestration" })).toBeVisible();
+    }
+  });
+
+  test("DevOps guide stays within the max-width container at 1280px and 1440px", async ({ page }) => {
+    for (const width of [1280, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/guides/devops-interview-guide");
+      const mainBox = await page.locator("main").boundingBox();
+      expect(mainBox).not.toBeNull();
+      expect(mainBox!.width).toBeLessThanOrEqual(1153);
+    }
+  });
+
+  test("roadmaps landing page loads and links to the DevOps Engineer Roadmap without fake future-roadmap links", async ({ page }) => {
+    const response = await page.goto("/roadmaps");
+    expect(response?.status()).toBe(200);
+    await expect(page.getByRole("heading", { level: 1, name: "DevOps Roadmaps" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 3, name: "DevOps Engineer Roadmap" })).toBeVisible();
+    await expect(page.locator('a[href="/roadmaps/devops-engineer-roadmap"]')).toBeVisible();
+    // The "more roadmaps planned" note must not link to routes that don't exist yet.
+    await expect(page.locator('a[href*="cloud-engineer"], a[href*="sre-roadmap"], a[href*="platform-engineer-roadmap"]')).toHaveCount(0);
+  });
+
+  test("Roadmaps nav link navigates to the roadmaps landing page", async ({ page }) => {
+    await page.goto("/");
+    await page.locator("nav").getByRole("link", { name: "Roadmaps", exact: true }).click();
+    await expect(page).toHaveURL(/\/roadmaps$/);
+    await expect(page.getByRole("heading", { name: "DevOps Roadmaps" })).toBeVisible();
+  });
+
+  test("DevOps Engineer Roadmap detail page loads with all required sections and structured data", async ({ page }) => {
+    const response = await page.goto("/roadmaps/devops-engineer-roadmap");
+    expect(response?.status()).toBe(200);
+    await expect(page.getByRole("heading", { level: 1, name: "DevOps Engineer Roadmap" })).toBeVisible();
+
+    for (const heading of ["Introduction", "Who This Roadmap Is For", "Deferred Areas", "Stages", "Related Guides"]) {
+      await expect(page.getByRole("heading", { level: 2, name: heading })).toBeVisible();
+    }
+
+    await expect(page.getByText("528 linked questions")).toBeVisible();
+
+    const jsonLdTypes = await page.locator('script[type="application/ld+json"]').allTextContents();
+    const types = jsonLdTypes.map((json) => JSON.parse(json)["@type"]);
+    expect(types).toContain("BreadcrumbList");
+    expect(types).toContain("Course");
+  });
+
+  test("all 12 roadmap stages render in order with correct live-derived question counts", async ({ page }) => {
+    await page.goto("/roadmaps/devops-engineer-roadmap");
+    const stageHeadings = page.getByRole("heading", { level: 3 });
+    await expect(stageHeadings).toHaveCount(12);
+
+    const expected = [
+      ["Foundations", 52],
+      ["Source Control & Collaboration", 30],
+      ["Containers", 29],
+      ["CI/CD", 44],
+      ["Orchestration", 142],
+      ["Infrastructure as Code", 40],
+      ["Cloud Platforms", 96],
+      ["Security Fundamentals", 24],
+      ["Observability Fundamentals", 24],
+      ["GitOps & Modern Delivery", 23],
+      ["Networking Essentials", 10],
+      ["Production Readiness", 14],
+    ] as const;
+
+    for (let i = 0; i < expected.length; i++) {
+      await expect(stageHeadings.nth(i)).toHaveText(expected[i]![0]);
+    }
+    // Spot-check live counts on the largest and smallest stages via their own displayed text.
+    await expect(page.getByText(`${expected[4]![1]} questions in this stage's category pool`)).toBeVisible();
+    await expect(page.getByText(`${expected[6]![1]} questions in this stage's category pool`)).toBeVisible();
+    await expect(page.getByText(`${expected[10]![1]} questions in this stage's category pool`)).toBeVisible();
+  });
+
+  test("Deferred Areas section explains why sre, platform-engineering, databases, and system-design are excluded", async ({ page }) => {
+    await page.goto("/roadmaps/devops-engineer-roadmap");
+    const section = page.locator("section", { has: page.getByRole("heading", { level: 2, name: "Deferred Areas" }) });
+    for (const term of ["sre", "platform-engineering", "databases", "system-design"]) {
+      await expect(section.getByText(term, { exact: false }).first()).toBeVisible();
+    }
+  });
+
+  test("roadmap distinguishes /troubleshooting (this stage's own 4 questions) from the 130-question cross-cutting /type/troubleshooting", async ({ page }) => {
+    await page.goto("/roadmaps/devops-engineer-roadmap");
+    const stageCard = page.locator("#production-readiness");
+    await expect(stageCard.getByText("130", { exact: false })).toBeVisible();
+    await expect(stageCard.locator('a[href="/type/troubleshooting"]')).toBeVisible();
+  });
+
+  test("Orchestration, Infrastructure as Code, and Cloud Platforms stages link to their existing dedicated Guides", async ({ page }) => {
+    await page.goto("/roadmaps/devops-engineer-roadmap");
+    // Each stage's description also mentions its Guide inline, in addition to the dedicated
+    // Resources list link — both are real, intentional links to the same Guide, so .first() suffices.
+    await expect(page.locator("#orchestration a[href=\"/guides/kubernetes-interview-guide\"]").first()).toBeVisible();
+    await expect(page.locator("#iac a[href=\"/guides/terraform-interview-guide\"]").first()).toBeVisible();
+    await expect(page.locator("#cloud a[href=\"/guides/aws-devops-interview-guide\"]").first()).toBeVisible();
+  });
+
+  test("a stage's checkpoint and representative practice links navigate to real, existing question pages", async ({ page }) => {
+    await page.goto("/roadmaps/devops-engineer-roadmap");
+    const stageCard = page.locator("#networking");
+    const link = stageCard.locator("a[href^='/questions/networking/']").first();
+    await expect(link).toBeVisible();
+    const href = await link.getAttribute("href");
+    await link.click();
+    await expect(page).toHaveURL(new RegExp(`${href!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`));
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  });
+
+  test("a stage's category resource link lands on the correct existing category page", async ({ page }) => {
+    await page.goto("/roadmaps/devops-engineer-roadmap");
+    const stageCard = page.locator("#networking");
+    await stageCard.getByRole("link", { name: /Networking questions/ }).click();
+    await expect(page).toHaveURL(/\/networking$/);
+    await expect(page.locator("a[href^='/questions/networking/']").first()).toBeVisible();
+  });
+
+  test("roadmap progress: marking a stage complete updates its status, the progress bar, and the overall percentage", async ({ page }) => {
+    await page.goto("/roadmaps/devops-engineer-roadmap");
+    const progressbar = page.getByRole("progressbar", { name: "Roadmap completion progress" });
+    await expect(progressbar).toHaveAttribute("aria-valuenow", "0");
+    await expect(page.getByText("0% (0 of 12 stages)")).toBeVisible();
+
+    const foundationsCard = page.locator("#foundations");
+    await foundationsCard.getByRole("checkbox", { name: "Mark this stage complete" }).check();
+
+    await expect(progressbar).toHaveAttribute("aria-valuenow", "8");
+    await expect(page.getByText("8% (1 of 12 stages)")).toBeVisible();
+    await expect(foundationsCard.getByText("Completed")).toBeVisible();
+  });
+
+  test("roadmap progress survives a page refresh via localStorage", async ({ page }) => {
+    await page.goto("/roadmaps/devops-engineer-roadmap");
+    await page.locator("#containers").getByRole("checkbox", { name: "Mark this stage complete" }).check();
+    await expect(page.getByText("8% (1 of 12 stages)")).toBeVisible();
+
+    await page.reload();
+    await expect(page.locator("#containers").getByRole("checkbox", { name: "Mark this stage complete" })).toBeChecked();
+    await expect(page.getByText("8% (1 of 12 stages)")).toBeVisible();
+  });
+
+  test("roadmap progress tolerates malformed localStorage instead of crashing", async ({ page }) => {
+    await page.goto("/roadmaps/devops-engineer-roadmap");
+    await page.evaluate(() => localStorage.setItem("roadmap-progress", "{not valid json"));
+    await page.reload();
+    await expect(page.getByRole("heading", { level: 1, name: "DevOps Engineer Roadmap" })).toBeVisible();
+    await expect(page.getByText("0% (0 of 12 stages)")).toBeVisible();
+
+    await page.evaluate(() => localStorage.setItem("roadmap-progress", JSON.stringify({ completedStageIds: "not-an-array" })));
+    await page.reload();
+    await expect(page.getByText("0% (0 of 12 stages)")).toBeVisible();
+
+    // A stage id that no longer exists must be silently ignored, not crash or count toward progress.
+    await page.evaluate(() => localStorage.setItem("roadmap-progress", JSON.stringify({ completedStageIds: ["some-removed-stage"] })));
+    await page.reload();
+    await expect(page.getByRole("heading", { level: 1, name: "DevOps Engineer Roadmap" })).toBeVisible();
+    await expect(page.getByText("0% (0 of 12 stages)")).toBeVisible();
+  });
+
+  test("roadmap SEO metadata is present and distinct from the Guides landing page", async ({ page }) => {
+    await page.goto("/roadmaps/devops-engineer-roadmap");
+    await expect(page).toHaveTitle(/DevOps Engineer Roadmap/);
+    const canonical = page.locator('link[rel="canonical"]');
+    await expect(canonical).toHaveAttribute("href", /\/roadmaps\/devops-engineer-roadmap$/);
+    await expect(page.locator('meta[property="og:title"]')).toHaveAttribute("content", /DevOps Engineer Roadmap/);
+    await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute("content", "summary_large_image");
+  });
+
+  test("roadmap renders correctly at mobile viewports with no horizontal overflow", async ({ page }) => {
+    for (const viewport of [
+      { width: 375, height: 812 },
+      { width: 390, height: 844 },
+      { width: 412, height: 915 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto("/roadmaps/devops-engineer-roadmap");
+      const [scrollWidth, clientWidth] = await page.evaluate(() => [
+        document.documentElement.scrollWidth,
+        document.documentElement.clientWidth,
+      ]);
+      expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
+      await expect(page.getByRole("heading", { level: 3, name: "Foundations" })).toBeVisible();
+      await expect(page.getByRole("checkbox", { name: "Mark this stage complete" }).first()).toBeVisible();
+    }
+  });
+
+  test("roadmap stays within the max-width container at 1280px and 1440px", async ({ page }) => {
+    for (const width of [1280, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/roadmaps/devops-engineer-roadmap");
+      const mainBox = await page.locator("main").boundingBox();
+      expect(mainBox).not.toBeNull();
+      expect(mainBox!.width).toBeLessThanOrEqual(1153);
+    }
+  });
+
   test("sitemap.xml and robots.txt exist and are well-formed", async ({ request }) => {
     const sitemapRes = await request.get("/sitemap.xml");
     expect(sitemapRes.status()).toBe(200);
     const sitemapBody = await sitemapRes.text();
     expect(sitemapBody).toContain("<urlset");
     expect(sitemapBody).toContain(SAMPLE_QUESTION_PATH);
+    expect(sitemapBody).toContain("/guides</loc>");
+    expect(sitemapBody).toContain("/guides/kubernetes-interview-guide</loc>");
+    expect(sitemapBody).toContain("/guides/aws-devops-interview-guide</loc>");
+    expect(sitemapBody).toContain("/guides/terraform-interview-guide</loc>");
+    expect(sitemapBody).toContain("/guides/devops-interview-guide</loc>");
+    expect(sitemapBody).toContain("/roadmaps</loc>");
+    expect(sitemapBody).toContain("/roadmaps/devops-engineer-roadmap</loc>");
 
     const robotsRes = await request.get("/robots.txt");
     expect(robotsRes.status()).toBe(200);
@@ -203,7 +1324,7 @@ test.describe("DevOps Interview Knowledge Base", () => {
     page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
     page.on("pageerror", (e) => errors.push(String(e)));
 
-    for (const path of ["/", "/aws", SAMPLE_QUESTION_PATH, "/search", "/technologies/kubernetes", "/difficulty/advanced", "/practice", "/contact"]) {
+    for (const path of ["/", "/aws", SAMPLE_QUESTION_PATH, "/search", "/technologies/kubernetes", "/difficulty/advanced", "/practice", "/contact", "/guides", "/guides/kubernetes-interview-guide", "/guides/devops-interview-guide", "/roadmaps", "/roadmaps/devops-engineer-roadmap"]) {
       await page.goto(path, { waitUntil: "networkidle" });
     }
     expect(errors).toEqual([]);

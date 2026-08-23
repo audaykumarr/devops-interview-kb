@@ -1,4 +1,5 @@
 import type { QuestionRecord } from "./validate";
+import { computeInterviewLevels, type InterviewLevel } from "./interview-level";
 
 export interface QuestionIndexEntry {
   id: string;
@@ -9,6 +10,7 @@ export interface QuestionIndexEntry {
   technologies: string[];
   difficulty: string;
   question_type: string[];
+  interview_level: InterviewLevel[];
   tags: string[];
   estimated_time_minutes: number;
   companies: string[];
@@ -33,6 +35,11 @@ export function buildIndex(records: QuestionRecord[]): QuestionIndexEntry[] {
       technologies: r.data.technologies,
       difficulty: r.data.difficulty,
       question_type: r.data.question_type,
+      interview_level: computeInterviewLevels({
+        category: r.data.category,
+        difficulty: r.data.difficulty,
+        question_type: r.data.question_type,
+      }),
       tags: r.data.tags,
       estimated_time_minutes: r.data.estimated_time_minutes,
       companies: r.data.companies ?? [],

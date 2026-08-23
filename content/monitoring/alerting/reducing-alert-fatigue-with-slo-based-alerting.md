@@ -17,7 +17,8 @@ tags:
   - observability
 estimated_time_minutes: 10
 companies: []
-related_questions: []
+related_questions:
+  - observability-metrics-alert-fatigue-noisy-thresholds-001
 status: published
 last_reviewed: 2026-08-21
 last_updated: 2026-08-21

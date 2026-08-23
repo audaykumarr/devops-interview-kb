@@ -16,7 +16,14 @@ import { breadcrumbJsonLd, itemListJsonLd } from "@/lib/structured-data";
 
 interface PageProps {
   params: Promise<{ category: string }>;
-  searchParams: Promise<{ difficulty?: string; technology?: string; type?: string; page?: string }>;
+  searchParams: Promise<{
+    difficulty?: string;
+    technology?: string;
+    type?: string;
+    level?: string;
+    subcategory?: string;
+    page?: string;
+  }>;
 }
 
 export function generateStaticParams() {
@@ -48,11 +55,14 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
     difficulty: sp.difficulty,
     technology: sp.technology,
     question_type: sp.type,
+    interview_level: sp.level,
+    subcategory: sp.subcategory,
   });
 
   const difficulties = Array.from(new Set(all.map((q) => q.difficulty))).sort();
   const technologies = Array.from(new Set(all.flatMap((q) => q.technologies))).sort();
   const questionTypes = Array.from(new Set(all.flatMap((q) => q.question_type))).sort();
+  const levels = Array.from(new Set(all.flatMap((q) => q.interview_level))).sort();
 
   const requestedPage = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
   const { items: pageItems, currentPage, totalPages, startIndex } = paginate(filtered, requestedPage);
@@ -62,6 +72,8 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
     if (sp.difficulty) qsParams.set("difficulty", sp.difficulty);
     if (sp.technology) qsParams.set("technology", sp.technology);
     if (sp.type) qsParams.set("type", sp.type);
+    if (sp.level) qsParams.set("level", sp.level);
+    if (sp.subcategory) qsParams.set("subcategory", sp.subcategory);
     if (page > 1) qsParams.set("page", String(page));
     const qs = qsParams.toString();
     return qs ? `/${category}?${qs}` : `/${category}`;
@@ -110,6 +122,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
               { key: "difficulty", label: "Difficulty", options: difficulties },
               { key: "technology", label: "Technology", options: technologies },
               { key: "type", label: "Type", options: questionTypes },
+              { key: "level", label: "Interview Level", options: levels },
             ]}
           />
         </Suspense>

@@ -42,6 +42,23 @@ test("computeStatistics counts by category, difficulty, technology, question_typ
   assert.deepEqual(stats.by_status, { published: 2, draft: 1 });
 });
 
+test("computeStatistics also computes by_interview_level from the same difficulty/category/question_type rules", () => {
+  const stats = computeStatistics([
+    // beginner + aws -> junior-devops, devops-engineer, cloud-engineer
+    record("a", { category: "aws", difficulty: "beginner", question_type: ["conceptual"] }),
+    // advanced + aws + security type -> senior-devops, staff-principal, cloud-engineer, devsecops
+    record("b", { category: "aws", difficulty: "advanced", question_type: ["scenario", "security"] }),
+  ]);
+  assert.deepEqual(stats.by_interview_level, {
+    "junior-devops": 1,
+    "devops-engineer": 1,
+    "cloud-engineer": 2,
+    "senior-devops": 1,
+    "staff-principal": 1,
+    devsecops: 1,
+  });
+});
+
 test("computeStatistics orders recently_updated newest first and caps at 10", () => {
   const records = Array.from({ length: 12 }, (_, i) =>
     record(`q-${i}`, { last_updated: `2026-01-${String(i + 1).padStart(2, "0")}` }),

@@ -64,6 +64,12 @@ Every network link has a maximum packet size (MTU) it can carry, and when a pack
 - When introducing a new network overlay, VPN, or tunnel, explicitly verify and account for its effective MTU (accounting for its encapsulation overhead) rather than assuming it matches the underlying network's MTU.
 - Consider TCP MSS clamping at network boundaries where MTU mismatches are structurally likely (VPN gateways, tunnel endpoints), so connections negotiate an appropriately sized segment from the start rather than relying entirely on Path MTU Discovery working correctly.
 
+## Interview Follow-Up Questions
+
+- How would you detect this class of issue proactively, through monitoring, rather than waiting for a user-facing report of a hung request?
+- What's the difference between how IPv4 and IPv6 handle fragmentation, and how does that change this troubleshooting approach?
+- How would you explain to a security team why "block all ICMP" is a common but risky default, without asking them to open up unrelated attack surface?
+
 ## Key Takeaways
 
 - "Small requests work, larger ones hang silently with no error" is a classic signature of an MTU mismatch combined with blocked ICMP breaking Path MTU Discovery's feedback loop.

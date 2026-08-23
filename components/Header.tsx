@@ -12,19 +12,25 @@ export function Header() {
           </span>
           DevOps Interview KB
         </Link>
-        <nav className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
-          <Link href="/search" className="hover:text-slate-900 dark:hover:text-slate-100">
+        <nav className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600 dark:text-slate-400">
+          <Link href="/search" className="-my-2 py-2 hover:text-slate-900 dark:hover:text-slate-100">
             Search
           </Link>
-          <Link href="/practice" className="hover:text-slate-900 dark:hover:text-slate-100">
+          <Link href="/practice" className="-my-2 py-2 hover:text-slate-900 dark:hover:text-slate-100">
             Practice
           </Link>
-          <Link href="/contact" className="hover:text-slate-900 dark:hover:text-slate-100">
+          <Link href="/guides" className="-my-2 py-2 hover:text-slate-900 dark:hover:text-slate-100">
+            Guides
+          </Link>
+          <Link href="/roadmaps" className="-my-2 py-2 hover:text-slate-900 dark:hover:text-slate-100">
+            Roadmaps
+          </Link>
+          <Link href="/contact" className="-my-2 py-2 hover:text-slate-900 dark:hover:text-slate-100">
             Contact
           </Link>
           <a
             href="https://github.com/audaykumarr/devops-interview-kb"
-            className="hover:text-slate-900 dark:hover:text-slate-100"
+            className="-my-2 py-2 hover:text-slate-900 dark:hover:text-slate-100"
           >
             GitHub
           </a>

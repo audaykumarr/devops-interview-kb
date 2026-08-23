@@ -3,6 +3,7 @@ import { join } from "node:path";
 import matter from "gray-matter";
 import { extractHeadings } from "@/scripts/lib/content";
 import type { Statistics } from "@/scripts/lib/statistics";
+import type { InterviewLevel } from "@/scripts/lib/interview-level";
 
 const ROOT = process.cwd();
 
@@ -15,6 +16,7 @@ export interface QuestionIndexEntry {
   technologies: string[];
   difficulty: "beginner" | "intermediate" | "advanced" | "expert";
   question_type: string[];
+  interview_level: InterviewLevel[];
   tags: string[];
   estimated_time_minutes: number;
   companies: string[];
@@ -109,6 +111,14 @@ export function getQuestionsByTechnology(technology: string): QuestionIndexEntry
 
 export function getQuestionsByDifficulty(difficulty: string): QuestionIndexEntry[] {
   return getAllQuestions().filter((q) => q.difficulty === difficulty);
+}
+
+export function getQuestionsByType(type: string): QuestionIndexEntry[] {
+  return getAllQuestions().filter((q) => q.question_type.includes(type));
+}
+
+export function getQuestionsByLevel(level: string): QuestionIndexEntry[] {
+  return getAllQuestions().filter((q) => q.interview_level.includes(level as InterviewLevel));
 }
 
 export function getAllTechnologies(): { slug: string; count: number }[] {

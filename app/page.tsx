@@ -2,9 +2,11 @@ import Link from "next/link";
 import { SearchBox } from "@/components/SearchBox";
 import { DifficultyBadge } from "@/components/Badge";
 import { JsonLd } from "@/components/JsonLd";
+import { getAllGuides } from "@/lib/guides";
 import { getAllQuestions, getAllTechnologies, getCategoriesWithCounts, getStatistics } from "@/lib/questions";
 import { labelize } from "@/lib/format";
 import { organizationJsonLd, websiteJsonLd } from "@/lib/structured-data";
+import { INTERVIEW_LEVELS, INTERVIEW_LEVEL_LABELS } from "@/scripts/lib/interview-level";
 
 const DIFFICULTIES = ["beginner", "intermediate", "advanced", "expert"];
 
@@ -16,6 +18,7 @@ export default function HomePage() {
   const technologies = getAllTechnologies().slice(0, 16);
   const questionTypes = Object.entries(stats.by_question_type).sort((a, b) => b[1] - a[1]);
   const allQuestions = getAllQuestions();
+  const guideCount = getAllGuides().filter((g) => g.status === "published").length;
 
   return (
     <div>
@@ -26,15 +29,39 @@ export default function HomePage() {
           DevOps Interview Knowledge Base
         </h1>
         <p className="mx-auto mt-3 max-w-2xl text-slate-600 dark:text-slate-400">
-          Practical, scenario-driven interview prep — from foundational concepts to real
-          production troubleshooting. Every question and answer is original and Git-sourced.
+          {stats.total_questions} original, scenario-driven interview questions across {categories.length}{" "}
+          categories — from foundational concepts to real production troubleshooting. Every question and answer is
+          original and Git-sourced.
         </p>
         <div className="mx-auto mt-6 max-w-xl">
           <SearchBox autoFocus />
         </div>
       </section>
 
-      <section className="mt-10">
+      <section className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Link
+          href="/guides"
+          className="rounded-lg border border-slate-200 bg-white p-5 hover:border-indigo-400 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:hover:border-indigo-500"
+        >
+          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Learn with a Guide</p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            {guideCount} structured preparation guides — what to learn, in what order, and which questions actually
+            matter for the role you&apos;re preparing for.
+          </p>
+        </Link>
+        <Link
+          href="/practice"
+          className="rounded-lg border border-slate-200 bg-white p-5 hover:border-indigo-400 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:hover:border-indigo-500"
+        >
+          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Jump into Practice</p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Flashcard-style practice — reveal each answer, filter by category or difficulty, and work through the
+            bank one question at a time.
+          </p>
+        </Link>
+      </section>
+
+      <section className="mt-12">
         <SectionHeading>Browse by Category</SectionHeading>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {categories.map((c) => (
@@ -89,10 +116,26 @@ export default function HomePage() {
           {questionTypes.map(([type, count]) => (
             <Link
               key={type}
-              href={`/search?type=${type}`}
+              href={`/type/${type}`}
               className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:border-slate-300 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-700"
             >
               {labelize(type)} <span className="text-slate-400 dark:text-slate-500">({count})</span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-12">
+        <SectionHeading>Browse by Interview Level</SectionHeading>
+        <div className="flex flex-wrap gap-2">
+          {INTERVIEW_LEVELS.map((level) => (
+            <Link
+              key={level}
+              href={`/level/${level}`}
+              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:border-slate-300 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-700"
+            >
+              {INTERVIEW_LEVEL_LABELS[level]}{" "}
+              <span className="text-slate-400 dark:text-slate-500">({stats.by_interview_level[level] ?? 0})</span>
             </Link>
           ))}
         </div>

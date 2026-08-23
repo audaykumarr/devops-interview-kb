@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { DifficultyBadge, TechnologyBadge, TypeBadge } from "@/components/Badge";
@@ -11,6 +12,7 @@ import { formatDate, formatMinutes, labelize, stripMarkdown } from "@/lib/format
 import { getAllQuestions, getCategoryName, getQuestionDetail } from "@/lib/questions";
 import { buildMetadata } from "@/lib/seo";
 import { breadcrumbJsonLd, qaPageJsonLd } from "@/lib/structured-data";
+import { INTERVIEW_LEVEL_LABELS } from "@/scripts/lib/interview-level";
 
 function metaDescription(shortAnswer: string, title: string): string {
   const plain = stripMarkdown(shortAnswer || title);
@@ -117,6 +119,21 @@ export default async function QuestionPage({ params }: PageProps) {
           {formatMinutes(detail.estimated_time_minutes)} read
         </span>
       </div>
+
+      {detail.interview_level.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Interview level:</span>
+          {detail.interview_level.map((level) => (
+            <Link
+              key={level}
+              href={`/level/${level}`}
+              className="rounded-full border border-slate-300 px-2.5 py-1 text-xs text-slate-600 hover:border-indigo-400 hover:text-indigo-600 dark:border-slate-700 dark:text-slate-400 dark:hover:border-indigo-500 dark:hover:text-indigo-400"
+            >
+              {INTERVIEW_LEVEL_LABELS[level] ?? labelize(level)}
+            </Link>
+          ))}
+        </div>
+      )}
 
       <div className="mt-8 space-y-8">
         {SECTION_ORDER.filter((heading) => detail.sections[heading]).map((heading) => (

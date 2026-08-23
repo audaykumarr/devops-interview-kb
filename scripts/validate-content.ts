@@ -17,7 +17,12 @@ function main(): void {
   const contentDir = join(ROOT, "content");
   const { validateSchema, validCategories } = loadSchemaAndTaxonomy(ROOT);
 
-  const files = findMarkdownFiles(contentDir).map((file) => loadQuestionFile(file, ROOT));
+  const files = findMarkdownFiles(contentDir)
+    .filter((file) => {
+      const normalized = file.replace(/\\/g, "/");
+      return !normalized.includes("/content/guides/") && !normalized.includes("/content/roadmaps/");
+    })
+    .map((file) => loadQuestionFile(file, ROOT));
   if (files.length === 0) {
     console.error(`No content files found under ${contentDir}`);
     process.exit(1);

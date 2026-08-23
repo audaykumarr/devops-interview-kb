@@ -15,7 +15,8 @@ tags:
   - resource-management
 estimated_time_minutes: 5
 companies: []
-related_questions: []
+related_questions:
+  - kubernetes-autoscaling-hpa-not-scaling-despite-latency-001
 status: published
 last_reviewed: 2026-08-21
 last_updated: 2026-08-21

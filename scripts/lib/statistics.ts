@@ -1,4 +1,5 @@
 import type { QuestionRecord } from "./validate";
+import { computeInterviewLevels } from "./interview-level";
 
 export interface Statistics {
   generated_at: string;
@@ -7,6 +8,7 @@ export interface Statistics {
   by_difficulty: Record<string, number>;
   by_technology: Record<string, number>;
   by_question_type: Record<string, number>;
+  by_interview_level: Record<string, number>;
   by_status: Record<string, number>;
   recently_updated: { id: string; title: string; last_updated: string }[];
 }
@@ -20,6 +22,7 @@ export function computeStatistics(records: QuestionRecord[], now: Date = new Dat
   const byDifficulty: Record<string, number> = {};
   const byTechnology: Record<string, number> = {};
   const byQuestionType: Record<string, number> = {};
+  const byInterviewLevel: Record<string, number> = {};
   const byStatus: Record<string, number> = {};
 
   for (const r of records) {
@@ -28,6 +31,12 @@ export function computeStatistics(records: QuestionRecord[], now: Date = new Dat
     increment(byStatus, r.data.status);
     for (const tech of r.data.technologies) increment(byTechnology, tech);
     for (const type of r.data.question_type) increment(byQuestionType, type);
+    const levels = computeInterviewLevels({
+      category: r.data.category,
+      difficulty: r.data.difficulty,
+      question_type: r.data.question_type,
+    });
+    for (const level of levels) increment(byInterviewLevel, level);
   }
 
   const recentlyUpdated = [...records]
@@ -42,6 +51,7 @@ export function computeStatistics(records: QuestionRecord[], now: Date = new Dat
     by_difficulty: byDifficulty,
     by_technology: byTechnology,
     by_question_type: byQuestionType,
+    by_interview_level: byInterviewLevel,
     by_status: byStatus,
     recently_updated: recentlyUpdated,
   };

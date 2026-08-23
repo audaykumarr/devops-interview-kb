@@ -38,14 +38,18 @@ Workspaces are lightweight and keep configuration fully DRY (one set of `.tf` fi
 
 **Separate directories do mean genuine configuration duplication, which needs its own management strategy**: keeping `production/main.tf` and `staging/main.tf` in sync (when they should be identical except for environment-specific variables) requires either careful discipline, a shared module both directories call (factoring the actual resource definitions into a common module, with each environment directory just calling it with different variables), or accepting some drift risk between environments' configurations over time.
 
+**Workspaces also don't naturally support environments that need genuinely different configuration, not just different variable values**: if production needs meaningfully different resources or architecture beyond what a variable can express, workspaces (sharing one set of `.tf` files) handle this awkwardly at best, typically forcing conditional logic scattered throughout the shared configuration — separate directories accommodate real divergence naturally, since each is its own independent configuration.
+
 **The common, sensible pattern**: use a shared module containing the actual resource definitions (avoiding logic duplication), with separate root-module directories per environment (each with explicit backend configuration and environment-specific variable values) calling that shared module — this captures workspaces' DRY benefit (the actual resource logic lives in one place, the module) while keeping separate directories' safety property (unambiguous target environment per directory), rather than choosing purely between the two original options.
+
+**Workspaces still earn their place for genuinely low-stakes, near-identical environments** — ephemeral feature-branch preview environments, for instance, where the consequence of an accidental wrong-target mistake is low and the environments are truly identical in shape, not just in variable values.
 
 ## Key Takeaways
 
 - Workspaces keep configuration fully DRY but make workspace selection a separate, stateful, easy-to-forget step that can lead to running a command against the wrong environment.
-- Separate directories make the target environment structurally unambiguous (determined by working directory), at the cost of configuration duplication.
+- Separate directories make the target environment structurally unambiguous (determined by working directory), at the cost of configuration duplication, and naturally support environments that need genuinely different configuration, not just different variable values.
 - Most teams find the explicit-directory approach's safety property worth the extra duplication specifically for production environments, given the stakes of the workspace-selection footgun.
-- A shared module (containing actual resource logic) called by separate per-environment root-module directories captures both DRY configuration and unambiguous environment targeting.
+- A shared module (containing actual resource logic) called by separate per-environment root-module directories captures both DRY configuration and unambiguous environment targeting; workspaces remain reasonable for low-stakes, truly identical, ephemeral environments.
 
 ## Interview Follow-Up Questions
 

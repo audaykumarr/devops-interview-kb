@@ -64,6 +64,58 @@ export function itemListJsonLd({
   };
 }
 
+export function techArticleJsonLd({
+  title,
+  description,
+  path,
+  dateModified,
+}: {
+  title: string;
+  description: string;
+  path: string;
+  dateModified: string;
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    headline: title,
+    description,
+    url: `${SITE_URL}${path}`,
+    dateModified,
+    publisher: {
+      "@type": "Organization",
+      name: SITE_NAME,
+      url: SITE_URL,
+    },
+  };
+}
+
+export function courseJsonLd({
+  title,
+  description,
+  path,
+  dateModified,
+}: {
+  title: string;
+  description: string;
+  path: string;
+  dateModified: string;
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Course",
+    name: title,
+    description,
+    url: `${SITE_URL}${path}`,
+    dateModified,
+    provider: {
+      "@type": "Organization",
+      name: SITE_NAME,
+      url: SITE_URL,
+    },
+  };
+}
+
 export function qaPageJsonLd({
   title,
   answerText,
