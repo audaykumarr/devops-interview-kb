@@ -14,7 +14,8 @@ tags:
   - autoscaling
 estimated_time_minutes: 8
 companies: []
-related_questions: []
+related_questions:
+  - kubernetes-autoscaling-limits-without-requests-breaks-hpa-001
 status: published
 last_reviewed: 2026-08-21
 last_updated: 2026-08-21

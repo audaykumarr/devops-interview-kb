@@ -21,9 +21,17 @@ export function loadSchemaAndTaxonomy(rootDir: string): {
   };
 }
 
+/** content/guides/ and content/roadmaps/ hold their own, different-schema file types (see scripts/validate-guides.ts and scripts/validate-roadmaps.ts) — never part of the question corpus. */
+function isGuideOrRoadmapFile(file: string): boolean {
+  const normalized = file.replace(/\\/g, "/");
+  return normalized.includes("/content/guides/") || normalized.includes("/content/roadmaps/");
+}
+
 export function loadRawCorpus(rootDir: string): RawQuestionFile[] {
   const contentDir = join(rootDir, "content");
-  return findMarkdownFiles(contentDir).map((file) => loadQuestionFile(file, rootDir));
+  return findMarkdownFiles(contentDir)
+    .filter((file) => !isGuideOrRoadmapFile(file))
+    .map((file) => loadQuestionFile(file, rootDir));
 }
 
 /** Loads and validates the corpus; prints an error and exits the process on any validation failure. */

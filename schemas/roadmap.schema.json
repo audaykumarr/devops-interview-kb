@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/audaykumarr/devops-interview-kb/blob/main/schemas/roadmap.schema.json",
+  "title": "DevOps Roadmap",
+  "description": "Frontmatter schema for a single roadmap file under roadmaps/<slug>.md. A roadmap is an ordered sequence of stages answering 'what should I learn, and in what order' for a target role — distinct from a Guide (deep reference) and a Question (practice). Stage prose (description, why_it_matters, learning_objectives, completion_criteria) lives in the markdown body under '## Stage: <title>' headings, not in frontmatter; only machine-readable stage data lives here. categories values must also exist in schemas/taxonomy.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "title", "description", "target_role", "stages", "status", "last_reviewed", "last_updated"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Globally unique identifier, kebab-case. Roadmaps are few and curated, so unlike question ids this has no numeric sequence suffix.",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 70,
+      "description": "Roadmap title, used as the page H1 and the default meta title."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 50,
+      "maxLength": 160,
+      "description": "One to two sentences summarizing the roadmap's scope and audience. Feeds the meta description."
+    },
+    "target_role": {
+      "type": "string",
+      "description": "The canonical Interview Level this roadmap targets — reuses the same 8-value enum as guide.schema.json's interview_levels rather than introducing a separate role taxonomy.",
+      "enum": [
+        "junior-devops",
+        "devops-engineer",
+        "senior-devops",
+        "sre",
+        "platform-engineer",
+        "cloud-engineer",
+        "devsecops",
+        "staff-principal"
+      ]
+    },
+    "estimated_duration_weeks": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 52
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "categories"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable, kebab-case identifier for this stage, unique within the roadmap (e.g. \"foundations\").",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+          },
+          "title": {
+            "type": "string",
+            "description": "Stage display name. Must exactly match the '## Stage: <title>' heading in the markdown body that holds this stage's prose."
+          },
+          "prerequisites": {
+            "type": "array",
+            "description": "Ids of stages within this same roadmap that should come first. Validated for existence and acyclicity.",
+            "items": { "type": "string" },
+            "default": []
+          },
+          "categories": {
+            "type": "array",
+            "description": "taxonomy.json category slugs this stage draws its dynamic question pool from.",
+            "items": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "technologies": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+            "uniqueItems": true,
+            "default": []
+          },
+          "related_guides": {
+            "type": "array",
+            "description": "Ids of existing guides this stage points to for deep reference. Validated for existence.",
+            "items": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+            "default": []
+          },
+          "recommended_questions": {
+            "type": "array",
+            "description": "A small, manually curated checkpoint set of question ids (kept intentionally small — 2 to 4). The broader representative practice set is derived dynamically at render time from `categories`, the same way a Guide's Practice Questions section works.",
+            "items": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*-[0-9]{3}$" },
+            "maxItems": 6,
+            "default": []
+          }
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "published", "deprecated"]
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date"
+    },
+    "author": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9-]{1,39}$"
+    }
+  }
+}

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { extractBulletList, extractHeadings } from "../lib/content";
+import { extractBulletList, extractHeadings, extractPreamble } from "../lib/content";
 
 test("extractHeadings splits body by ## headings", () => {
   const body = "## Question\n\nWhat is X?\n\n## Short Answer\n\nY.\n";
@@ -37,4 +37,25 @@ test("extractBulletList parses markdown list items and ignores non-bullet lines"
 
 test("extractBulletList returns an empty array for a section with no bullets", () => {
   assert.deepEqual(extractBulletList("Just a sentence, no list here."), []);
+});
+
+test("extractHeadings with level 3 splits by ### sub-headings instead of #/##", () => {
+  const body = "Intro text.\n\n### Why It Matters\n\nBecause reasons.\n\n### Learning Objectives\n\n- a\n- b\n";
+  const sections = extractHeadings(body, 3);
+  assert.equal(sections.get("Why It Matters"), "Because reasons.");
+  assert.equal(sections.get("Learning Objectives"), "- a\n- b");
+});
+
+test("extractHeadings default (level 2) behavior is unchanged when the level argument is omitted", () => {
+  const body = "## Question\n\nWhat is X?\n\n## Short Answer\n\nY.\n";
+  assert.deepEqual(extractHeadings(body), extractHeadings(body, 2));
+});
+
+test("extractPreamble returns the text before a section's first H3 sub-heading", () => {
+  const body = "This stage covers containers.\n\n### Why It Matters\n\nBecause reasons.\n";
+  assert.equal(extractPreamble(body), "This stage covers containers.");
+});
+
+test("extractPreamble returns the whole trimmed body when there are no H3 sub-headings", () => {
+  assert.equal(extractPreamble("Just a plain description.\n"), "Just a plain description.");
 });

@@ -184,7 +184,7 @@
     {
       "slug": "troubleshooting",
       "name": "Troubleshooting",
-      "description": "Cross-cutting troubleshooting scenarios that test systematic debugging under pressure, independent of any single technology stack."
+      "description": "General incident-response and debugging methodology — triage, escalation, and mitigate-vs-diagnose judgment calls — distinct from the technology-specific troubleshooting questions found within each individual category."
     },
     {
       "slug": "scenarios",

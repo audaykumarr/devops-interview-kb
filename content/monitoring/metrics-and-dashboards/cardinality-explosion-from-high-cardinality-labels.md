@@ -14,7 +14,8 @@ tags:
   - cardinality
 estimated_time_minutes: 8
 companies: []
-related_questions: []
+related_questions:
+  - observability-metrics-prometheus-cardinality-explosion-001
 status: published
 last_reviewed: 2026-08-22
 last_updated: 2026-08-22

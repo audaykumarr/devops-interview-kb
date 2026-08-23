@@ -26,15 +26,20 @@ export function findMarkdownFiles(dir: string): string[] {
   return files;
 }
 
-/** Splits a question body into named sections keyed by heading text (H1 or H2). */
-export function extractHeadings(body: string): Map<string, string> {
+/**
+ * Splits a body into named sections keyed by heading text. Defaults to H1-or-H2
+ * (question/guide top-level sections); pass level 3 to split H3 sub-sections
+ * within an already-extracted H2 section body instead (used for Roadmap stage
+ * sub-parts) — existing H1/H2 callers are unaffected since the default is unchanged.
+ */
+export function extractHeadings(body: string, level: 1 | 2 | 3 = 2): Map<string, string> {
   const sections = new Map<string, string>();
   const lines = body.replace(/\r\n/g, "\n").split("\n");
   let currentHeading: string | null = null;
   let currentContent: string[] = [];
 
   for (const line of lines) {
-    const headingMatch = /^#\s+(.+)$/.exec(line) ?? /^##\s+(.+)$/.exec(line);
+    const headingMatch = level === 3 ? /^###\s+(.+)$/.exec(line) : (/^#\s+(.+)$/.exec(line) ?? /^##\s+(.+)$/.exec(line));
     if (headingMatch) {
       if (currentHeading !== null) {
         sections.set(currentHeading, currentContent.join("\n").trim());
@@ -49,6 +54,11 @@ export function extractHeadings(body: string): Map<string, string> {
     sections.set(currentHeading, currentContent.join("\n").trim());
   }
   return sections;
+}
+
+/** The text before a section's first H3 sub-heading (a Roadmap stage's own description, ahead of its "### Why It Matters" etc. sub-parts). */
+export function extractPreamble(sectionBody: string): string {
+  return sectionBody.split(/^###\s+.+$/m)[0]!.trim();
 }
 
 /** Parses top-level "- item" markdown list lines out of a section body. */

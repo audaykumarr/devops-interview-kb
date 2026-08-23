@@ -7,6 +7,7 @@ export interface SearchableQuestion {
   technologies: string[];
   difficulty: string;
   question_type: string[];
+  interview_level?: string[];
   tags: string[];
   url: string;
 }
@@ -16,14 +17,20 @@ export interface SearchFilters {
   technology?: string;
   question_type?: string;
   category?: string;
+  subcategory?: string;
+  interview_level?: string;
 }
 
 export function applyFilters<T extends SearchableQuestion>(questions: T[], filters: SearchFilters): T[] {
   let results = questions;
   if (filters.difficulty) results = results.filter((q) => q.difficulty === filters.difficulty);
   if (filters.category) results = results.filter((q) => q.category === filters.category);
+  if (filters.subcategory) results = results.filter((q) => q.subcategory === filters.subcategory);
   if (filters.technology) results = results.filter((q) => q.technologies.includes(filters.technology!));
   if (filters.question_type) results = results.filter((q) => q.question_type.includes(filters.question_type!));
+  if (filters.interview_level) {
+    results = results.filter((q) => (q.interview_level ?? []).includes(filters.interview_level!));
+  }
   return results;
 }
 
