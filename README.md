@@ -1,5 +1,9 @@
 # DevOps Interview KB
 
+<p align="center">
+  <img src="public/logo.png" alt="DevOps Interview KB logo" width="140">
+</p>
+
 [![Deploy](https://github.com/audaykumarr/devops-interview-kb/actions/workflows/deploy.yml/badge.svg)](https://github.com/audaykumarr/devops-interview-kb/actions/workflows/deploy.yml)
 [![PR Validation](https://github.com/audaykumarr/devops-interview-kb/actions/workflows/pr-validation.yml/badge.svg)](https://github.com/audaykumarr/devops-interview-kb/actions/workflows/pr-validation.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -17,7 +21,8 @@ Question Types, structured Guides, and a staged Roadmap.
 🌐 [Website](https://devopsinterviewkb.com) ·
 📚 [Guides](https://devopsinterviewkb.com/guides) ·
 🗺️ [Roadmap](https://devopsinterviewkb.com/roadmaps/devops-engineer-roadmap) ·
-🤝 [Contributing](CONTRIBUTING.md)
+🤝 [Contributing](CONTRIBUTING.md) ·
+🐦 [@devopskb](https://x.com/devopskb)
 
 This is not a wall of "what is Docker?" definitions. The focus is practical,
 scenario-driven engineering judgment:

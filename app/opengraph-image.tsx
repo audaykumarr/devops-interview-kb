@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { getLogoDataUri } from "@/lib/logo";
 import { SITE_NAME } from "@/lib/site";
 
 export const alt = SITE_NAME;
@@ -22,8 +23,11 @@ export default function Image() {
           fontFamily: "sans-serif",
         }}
       >
-        <div style={{ fontSize: 28, color: "#818cf8", fontWeight: 600, letterSpacing: 2 }}>DEVOPS INTERVIEW KB</div>
-        <div style={{ fontSize: 64, fontWeight: 700, marginTop: 24, lineHeight: 1.15, maxWidth: 980 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+          <img src={getLogoDataUri()} width={84} height={84} style={{ borderRadius: 42 }} />
+          <div style={{ fontSize: 28, color: "#818cf8", fontWeight: 600, letterSpacing: 2 }}>DEVOPS INTERVIEW KB</div>
+        </div>
+        <div style={{ fontSize: 64, fontWeight: 700, marginTop: 32, lineHeight: 1.15, maxWidth: 980 }}>
           Practical DevOps Interview Questions
         </div>
         <div style={{ fontSize: 30, color: "#cbd5e1", marginTop: 24, maxWidth: 900 }}>

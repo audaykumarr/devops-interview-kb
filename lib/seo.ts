@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { X_HANDLE } from "./share";
 import { SITE_NAME, SITE_URL } from "./site";
 
 interface BuildMetadataOptions {
@@ -34,6 +35,8 @@ export function buildMetadata({ title, description, path, type = "website", noin
       card: "summary_large_image",
       title,
       description,
+      site: X_HANDLE,
+      creator: X_HANDLE,
     },
   };
 }

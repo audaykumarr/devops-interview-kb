@@ -1300,6 +1300,188 @@ test.describe("DevOps Interview Knowledge Base", () => {
     }
   });
 
+  test("Share button appears on question pages and opens a popover with Share on X and Copy", async ({ page }) => {
+    await page.goto(SAMPLE_QUESTION_PATH);
+    const shareButton = page.getByRole("button", { name: "Share" });
+    await expect(shareButton).toBeVisible();
+    await shareButton.click();
+    const menu = page.getByRole("menu", { name: "Share options" });
+    await expect(menu.getByRole("menuitem", { name: "Share on X" })).toBeVisible();
+    await expect(menu.getByRole("menuitem", { name: "Copy" })).toBeVisible();
+  });
+
+  test("Share button appears on Guide pages", async ({ page }) => {
+    await page.goto("/guides/kubernetes-interview-guide");
+    await expect(page.getByRole("button", { name: "Share" })).toBeVisible();
+  });
+
+  test("Share button appears on Roadmap pages", async ({ page }) => {
+    await page.goto("/roadmaps/devops-engineer-roadmap");
+    await expect(page.getByRole("button", { name: "Share" })).toBeVisible();
+  });
+
+  test("Share on X opens an x.com intent URL containing the canonical page URL, the question title, and @devopskb", async ({ page, baseURL }) => {
+    await page.goto(SAMPLE_QUESTION_PATH);
+    await page.getByRole("button", { name: "Share" }).click();
+    const [popup] = await Promise.all([
+      page.waitForEvent("popup"),
+      page.getByRole("menuitem", { name: "Share on X" }).click(),
+    ]);
+    const popupUrl = new URL(popup.url());
+    expect(popupUrl.hostname).toBe("x.com");
+    expect(popupUrl.pathname).toBe("/intent/tweet");
+    const text = decodeURIComponent(popupUrl.searchParams.get("text") ?? "");
+    expect(text).toContain(`${baseURL}${SAMPLE_QUESTION_PATH}`);
+    expect(text).toContain("@devopskb");
+    expect(text.toLowerCase()).toContain("iam");
+    await popup.close();
+  });
+
+  test("Share on X for a Guide includes the Guide title and the branded tagline", async ({ page, baseURL }) => {
+    await page.goto("/guides/kubernetes-interview-guide");
+    await page.getByRole("button", { name: "Share" }).click();
+    const [popup] = await Promise.all([
+      page.waitForEvent("popup"),
+      page.getByRole("menuitem", { name: "Share on X" }).click(),
+    ]);
+    const text = decodeURIComponent(new URL(popup.url()).searchParams.get("text") ?? "");
+    expect(text).toContain("Kubernetes Interview Guide");
+    expect(text).toContain("A practical guide for DevOps interview preparation.");
+    expect(text).toContain(`${baseURL}/guides/kubernetes-interview-guide`);
+    expect(text).toContain("@devopskb");
+    await popup.close();
+  });
+
+  test("Copy action copies branded share text (title, context, URL, and @devopskb), not just the bare link", async ({ page, context, baseURL }) => {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await page.goto("/roadmaps/devops-engineer-roadmap");
+    await page.getByRole("button", { name: "Share" }).click();
+    await page.getByRole("menuitem", { name: "Copy" }).click();
+    await expect(page.getByRole("button", { name: "Copied!" })).toBeVisible();
+    const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
+    expect(clipboardText).toContain("DevOps Engineer Roadmap");
+    expect(clipboardText).toContain("A practical learning path for DevOps interview preparation.");
+    expect(clipboardText).toContain(`${baseURL}/roadmaps/devops-engineer-roadmap`);
+    expect(clipboardText).toContain("@devopskb");
+  });
+
+  test("Web Share API is used directly (no popover) when available, with the correct branded payload", async ({ page, baseURL }) => {
+    await page.addInitScript(() => {
+      (window as unknown as { __shareCalls: unknown[] }).__shareCalls = [];
+      (navigator as unknown as { share: (data: unknown) => Promise<void> }).share = async (data: unknown) => {
+        (window as unknown as { __shareCalls: unknown[] }).__shareCalls.push(data);
+      };
+    });
+    await page.goto(SAMPLE_QUESTION_PATH);
+    await page.getByRole("button", { name: "Share" }).click();
+    await expect(page.getByRole("menu", { name: "Share options" })).toHaveCount(0);
+    const calls = await page.evaluate(() => (window as unknown as { __shareCalls: { title: string; text: string; url: string }[] }).__shareCalls);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.url).toBe(`${baseURL}${SAMPLE_QUESTION_PATH}`);
+    expect(calls[0]!.text).toContain("@devopskb");
+    expect(calls[0]!.text).toContain(`${baseURL}${SAMPLE_QUESTION_PATH}`);
+  });
+
+  test("Web Share API failing or being cancelled by the user does not break the page", async ({ page }) => {
+    await page.addInitScript(() => {
+      (navigator as unknown as { share: (data: unknown) => Promise<void> }).share = async () => {
+        throw new DOMException("Share canceled", "AbortError");
+      };
+    });
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(String(e)));
+    await page.goto(SAMPLE_QUESTION_PATH);
+    await page.getByRole("button", { name: "Share" }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+
+  test("Share popover closes on outside click and on Escape", async ({ page }) => {
+    await page.goto(SAMPLE_QUESTION_PATH);
+    await page.getByRole("button", { name: "Share" }).click();
+    await expect(page.getByRole("menu", { name: "Share options" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("menu", { name: "Share options" })).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Share" }).click();
+    await expect(page.getByRole("menu", { name: "Share options" })).toBeVisible();
+    await page.mouse.click(10, 10);
+    await expect(page.getByRole("menu", { name: "Share options" })).toHaveCount(0);
+  });
+
+  test("Share renders correctly in dark mode with no horizontal overflow, on mobile and desktop", async ({ page }) => {
+    await page.emulateMedia({ colorScheme: "dark" });
+    for (const viewport of [
+      { width: 375, height: 812 },
+      { width: 390, height: 844 },
+      { width: 1280, height: 900 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto(SAMPLE_QUESTION_PATH);
+      await page.getByRole("button", { name: "Share" }).click();
+      await expect(page.getByRole("menu", { name: "Share options" })).toBeVisible();
+      const [scrollWidth, clientWidth] = await page.evaluate(() => [
+        document.documentElement.scrollWidth,
+        document.documentElement.clientWidth,
+      ]);
+      expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
+    }
+  });
+
+  test("Share renders correctly in light mode with no horizontal overflow", async ({ page }) => {
+    await page.emulateMedia({ colorScheme: "light" });
+    await page.goto(SAMPLE_QUESTION_PATH);
+    await page.getByRole("button", { name: "Share" }).click();
+    await expect(page.getByRole("menu", { name: "Share options" })).toBeVisible();
+    const [scrollWidth, clientWidth] = await page.evaluate(() => [
+      document.documentElement.scrollWidth,
+      document.documentElement.clientWidth,
+    ]);
+    expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
+  });
+
+  test("no console errors on pages with the Share button, including after opening it", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+    page.on("pageerror", (e) => errors.push(String(e)));
+
+    for (const path of [SAMPLE_QUESTION_PATH, "/guides/kubernetes-interview-guide", "/roadmaps/devops-engineer-roadmap"]) {
+      await page.goto(path, { waitUntil: "networkidle" });
+      await page.getByRole("button", { name: "Share" }).click();
+      await page.keyboard.press("Escape");
+    }
+    expect(errors).toEqual([]);
+  });
+
+  test("favicon and OpenGraph images embed the official logo and render at the correct dimensions", async ({ request }) => {
+    const icon = await request.get("/icon");
+    expect(icon.status()).toBe(200);
+    expect(icon.headers()["content-type"]).toContain("image/png");
+
+    const ogDefault = await request.get("/opengraph-image");
+    expect(ogDefault.status()).toBe(200);
+
+    const ogGuide = await request.get("/guides/kubernetes-interview-guide/opengraph-image");
+    expect(ogGuide.status()).toBe(200);
+
+    const ogRoadmap = await request.get("/roadmaps/devops-engineer-roadmap/opengraph-image");
+    expect(ogRoadmap.status()).toBe(200);
+
+    const ogQuestion = await request.get(`${SAMPLE_QUESTION_PATH}/opengraph-image`);
+    expect(ogQuestion.status()).toBe(200);
+  });
+
+  test("Twitter Card metadata references @devopskb as site and creator", async ({ page }) => {
+    await page.goto(SAMPLE_QUESTION_PATH);
+    await expect(page.locator('meta[name="twitter:site"]')).toHaveAttribute("content", "@devopskb");
+    await expect(page.locator('meta[name="twitter:creator"]')).toHaveAttribute("content", "@devopskb");
+  });
+
+  test("footer links to the official X account", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.locator('footer a[href="https://x.com/devopskb"]')).toBeVisible();
+  });
+
   test("sitemap.xml and robots.txt exist and are well-formed", async ({ request }) => {
     const sitemapRes = await request.get("/sitemap.xml");
     expect(sitemapRes.status()).toBe(200);

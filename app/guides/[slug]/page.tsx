@@ -6,6 +6,7 @@ import { Badge } from "@/components/Badge";
 import { GuidePracticeQuestions } from "@/components/GuidePracticeQuestions";
 import { JsonLd } from "@/components/JsonLd";
 import { MarkdownSection } from "@/components/MarkdownSection";
+import { ShareButton } from "@/components/ShareButton";
 import { formatDate, labelize } from "@/lib/format";
 import { getAllGuides, getGuideDetail, getGuideQuestions } from "@/lib/guides";
 import { buildMetadata } from "@/lib/seo";
@@ -204,7 +205,10 @@ export default async function GuidePage({ params }: PageProps) {
       />
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Guides", href: "/guides" }, { label: detail.title }]} />
 
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 sm:text-3xl">{detail.title}</h1>
+      <div className="flex items-start justify-between gap-3">
+        <h1 className="min-w-0 text-2xl font-bold text-slate-900 dark:text-slate-100 sm:text-3xl">{detail.title}</h1>
+        <ShareButton type="guide" title={detail.title} path={detail.url} />
+      </div>
       <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600 dark:text-slate-300">{detail.description}</p>
 
       <div className="mt-4 flex flex-wrap items-center gap-1.5">

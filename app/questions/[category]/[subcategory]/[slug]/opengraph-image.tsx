@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { labelize } from "@/lib/format";
+import { getLogoDataUri } from "@/lib/logo";
 import { getAllQuestions, getCategoryName, getQuestionDetail } from "@/lib/questions";
 
 export const alt = "DevOps interview question preview";
@@ -49,6 +50,7 @@ export default async function Image({
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <img src={getLogoDataUri()} width={48} height={48} style={{ borderRadius: 24 }} />
           <div style={{ fontSize: 24, color: "#818cf8", fontWeight: 600, letterSpacing: 2 }}>DEVOPS INTERVIEW KB</div>
           <div style={{ fontSize: 20, color: "#94a3b8" }}>{`· ${categoryName}`}</div>
         </div>

@@ -3,14 +3,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { DifficultyBadge, TechnologyBadge, TypeBadge } from "@/components/Badge";
-import { CopyLinkButton } from "@/components/CopyLinkButton";
 import { FollowUpQuestions } from "@/components/FollowUpQuestions";
 import { JsonLd } from "@/components/JsonLd";
 import { MarkdownSection } from "@/components/MarkdownSection";
 import { RelatedQuestions } from "@/components/RelatedQuestions";
+import { ShareButton } from "@/components/ShareButton";
 import { formatDate, formatMinutes, labelize, stripMarkdown } from "@/lib/format";
 import { getAllQuestions, getCategoryName, getQuestionDetail } from "@/lib/questions";
 import { buildMetadata } from "@/lib/seo";
+import { buildQuestionHook } from "@/lib/share";
 import { breadcrumbJsonLd, qaPageJsonLd } from "@/lib/structured-data";
 import { INTERVIEW_LEVEL_LABELS } from "@/scripts/lib/interview-level";
 
@@ -103,8 +104,8 @@ export default async function QuestionPage({ params }: PageProps) {
       />
 
       <div className="flex items-start justify-between gap-3">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 sm:text-3xl">{detail.title}</h1>
-        <CopyLinkButton path={detail.url} />
+        <h1 className="min-w-0 text-2xl font-bold text-slate-900 dark:text-slate-100 sm:text-3xl">{detail.title}</h1>
+        <ShareButton type="question" title={detail.title} path={detail.url} hook={buildQuestionHook(categoryName, detail.title)} />
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-1.5">
