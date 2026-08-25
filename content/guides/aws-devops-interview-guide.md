@@ -30,8 +30,8 @@ featured_questions:
   - aws-s3-public-exposure-fast-alerting-design-001
 related_guides:
   - kubernetes-interview-guide
+  - terraform-interview-guide
 related_technologies:
-  - terraform
   - cloud-architecture
   - github-actions
 status: published
@@ -123,7 +123,7 @@ This bank is small enough (39 questions) that an artificial multi-week schedule 
 
 ## Related Guides
 
-If your interview also covers Kubernetes, the Kubernetes Interview Guide is a natural companion — many teams running AWS also run EKS. More guides — Terraform, GCP, Azure, and a general DevOps guide — are in progress and will be cross-linked here once published.
+If your interview also covers Kubernetes, the Kubernetes Interview Guide is a natural companion — many teams running AWS also run EKS. If your interview also covers infrastructure provisioning, the Terraform Interview Guide is a companion too — most of this bank's Terraform questions reason about AWS resources specifically. Azure remains an area for future dedicated coverage.
 
 ## References
 

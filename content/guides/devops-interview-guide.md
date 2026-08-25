@@ -82,9 +82,9 @@ related_guides:
   - kubernetes-interview-guide
   - aws-devops-interview-guide
   - terraform-interview-guide
+  - gcp-interview-guide
 related_technologies:
   - azure
-  - gcp
   - ansible
   - argocd
   - python
@@ -95,7 +95,7 @@ last_updated: 2026-08-23
 
 ## Introduction
 
-This bank holds 576 questions in total; 566 of them are technical and fall into 38 categories, and this guide is the map across all of them. It is not a single deep-dive — for that, use the dedicated [Kubernetes](/guides/kubernetes-interview-guide), [AWS](/guides/aws-devops-interview-guide), or [Terraform](/guides/terraform-interview-guide) guides instead. What this guide does is group those 38 categories into 16 higher-level domains, so you can see where the bank's actual weight sits (Orchestration alone is 142 questions — a quarter of the entire technical bank) and decide, deliberately, which domains matter for the interview you're actually preparing for rather than trying to cover all 566 questions evenly.
+This bank holds 576 questions in total; 566 of them are technical and fall into 38 categories, and this guide is the map across all of them. It is not a single deep-dive — for that, use the dedicated [Kubernetes](/guides/kubernetes-interview-guide), [AWS](/guides/aws-devops-interview-guide), [Terraform](/guides/terraform-interview-guide), or [GCP](/guides/gcp-interview-guide) guides instead. What this guide does is group those 38 categories into 16 higher-level domains, so you can see where the bank's actual weight sits (Orchestration alone is 142 questions — a quarter of the entire technical bank) and decide, deliberately, which domains matter for the interview you're actually preparing for rather than trying to cover all 566 questions evenly.
 
 The one category deliberately excluded here is `behavioral` — this guide is scoped to technical interview preparation, not behavioral/situational interviewing, which is a different discipline with its own preparation approach.
 
@@ -188,7 +188,7 @@ Adjust the weighting based on Who This Guide Is For above — an SRE candidate s
 
 ## Related Guides
 
-This guide is the map — for the three domains with the deepest dedicated coverage in this bank, use the focused guides instead of relying on this one alone: the [Kubernetes Interview Guide](/guides/kubernetes-interview-guide) for the full 142-question Orchestration domain, the [AWS DevOps Interview Guide](/guides/aws-devops-interview-guide) for AWS specifically within the Cloud domain, and the [Terraform Interview Guide](/guides/terraform-interview-guide) for the Terraform-specific slice of Infrastructure as Code. Work through this guide first to decide where to spend your time, then go deep with the dedicated guide for whichever domain matters most.
+This guide is the map — for the domains with the deepest dedicated coverage in this bank, use the focused guides instead of relying on this one alone: the [Kubernetes Interview Guide](/guides/kubernetes-interview-guide) for the full 142-question Orchestration domain, the [AWS DevOps Interview Guide](/guides/aws-devops-interview-guide) and [GCP Interview Guide](/guides/gcp-interview-guide) for AWS and GCP specifically within the Cloud domain, and the [Terraform Interview Guide](/guides/terraform-interview-guide) for the Terraform-specific slice of Infrastructure as Code. Work through this guide first to decide where to spend your time, then go deep with the dedicated guide for whichever domain matters most.
 
 ## References
 

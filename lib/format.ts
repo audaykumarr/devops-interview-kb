@@ -2,6 +2,7 @@ const ACRONYMS: Record<string, string> = {
   aws: "AWS", iam: "IAM", ec2: "EC2", vpc: "VPC", s3: "S3", ecs: "ECS", eks: "EKS",
   rds: "RDS", cli: "CLI", api: "API", ci: "CI", cd: "CD", "ci-cd": "CI/CD", cicd: "CI/CD",
   aks: "AKS", vm: "VM", vnet: "VNet", nsg: "NSG", oidc: "OIDC", sts: "STS",
+  gcp: "GCP", gke: "GKE", pubsub: "Pub/Sub",
   yaml: "YAML", sre: "SRE", gitops: "GitOps", argocd: "Argo CD", devsecops: "DevSecOps",
   k8s: "Kubernetes", sbom: "SBOM", slo: "SLO", sla: "SLA", sli: "SLI", iac: "IaC",
   crd: "CRD", hpa: "HPA", pvc: "PVC", dns: "DNS", cidr: "CIDR", github: "GitHub",

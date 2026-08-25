@@ -61,7 +61,7 @@ stages:
     title: Cloud Platforms
     prerequisites: [iac]
     categories: [aws, gcp, cloud-fundamentals, cloud-architecture, azure]
-    related_guides: [aws-devops-interview-guide]
+    related_guides: [aws-devops-interview-guide, gcp-interview-guide]
     recommended_questions:
       - aws-s3-public-bucket-exposure-001
       - azure-aks-autoscaler-not-scaling-001
@@ -260,9 +260,9 @@ Provisioning is a different discipline from operating what's provisioned — sta
 
 ## Stage: Cloud Platforms
 
-AWS, GCP, Azure, cloud fundamentals, and cross-cloud architecture. Lands here deliberately — by this point you already understand provisioning and orchestration, so cloud-specific content (IAM models, managed Kubernetes, serverless) is an application of those concepts to a vendor, not a disconnected topic. The dedicated [AWS DevOps Interview Guide](/guides/aws-devops-interview-guide) covers this stage's deepest single-provider slice.
+AWS, GCP, Azure, cloud fundamentals, and cross-cloud architecture. Lands here deliberately — by this point you already understand provisioning and orchestration, so cloud-specific content (IAM models, managed Kubernetes, serverless) is an application of those concepts to a vendor, not a disconnected topic. The dedicated [AWS DevOps Interview Guide](/guides/aws-devops-interview-guide) and [GCP Interview Guide](/guides/gcp-interview-guide) cover this stage's two deepest single-provider slices.
 
-**Pick one provider to go deep on rather than splitting attention evenly across all three.** AWS is this bank's deepest single-provider path (39 questions, a dedicated Guide, and a clear IAM/Lambda/S3 structure). GCP is comparably deep in raw count (27 questions) without a dedicated Guide yet — a reasonable second choice if AWS isn't your target. Azure is the thinnest of the three here (10 questions) and best treated as a light survey unless it's specifically your target platform.
+**Pick one provider to go deep on rather than splitting attention evenly across all three.** AWS is this bank's deepest single-provider path (39 questions, a dedicated Guide, and a clear IAM/Lambda/S3 structure). GCP is comparably deep (27 questions, its own dedicated Guide covering IAM, Storage, and Cloud Functions) — a reasonable second choice if AWS isn't your target. Azure is the thinnest of the three here (10 questions, no dedicated Guide yet) and best treated as a light survey unless it's specifically your target platform.
 
 ### Why It Matters
 
@@ -387,4 +387,4 @@ By this stage you've covered the mechanics of every domain — this is where jud
 
 ## Related Guides
 
-Three stages in this roadmap have a dedicated deep-reference Guide: [Kubernetes Interview Guide](/guides/kubernetes-interview-guide) for the full Orchestration stage, [Terraform Interview Guide](/guides/terraform-interview-guide) for the Infrastructure as Code stage's Terraform slice, and [AWS DevOps Interview Guide](/guides/aws-devops-interview-guide) for the Cloud Platforms stage's deepest single-provider path. For the roadmap's full scope in one place — all 16 domains, not just the 12 stages sequenced here — see the umbrella [DevOps Interview Guide](/guides/devops-interview-guide), which this roadmap draws its structure from but sequences differently: the Guide is organized for reference (jump to any domain), this roadmap is organized for progression (work through in order).
+Three stages in this roadmap have a dedicated deep-reference Guide: [Kubernetes Interview Guide](/guides/kubernetes-interview-guide) for the full Orchestration stage, [Terraform Interview Guide](/guides/terraform-interview-guide) for the Infrastructure as Code stage's Terraform slice, and the [AWS DevOps Interview Guide](/guides/aws-devops-interview-guide) and [GCP Interview Guide](/guides/gcp-interview-guide) for the Cloud Platforms stage's two deepest single-provider paths. For the roadmap's full scope in one place — all 16 domains, not just the 12 stages sequenced here — see the umbrella [DevOps Interview Guide](/guides/devops-interview-guide), which this roadmap draws its structure from but sequences differently: the Guide is organized for reference (jump to any domain), this roadmap is organized for progression (work through in order).

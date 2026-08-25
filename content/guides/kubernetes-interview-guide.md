@@ -28,10 +28,11 @@ featured_questions:
   - kubernetes-resource-management-oomkilled-001
   - kubernetes-autoscaling-hpa-not-scaling-despite-latency-001
   - kubernetes-admission-webhook-certificate-expiry-outage-001
-related_guides: []
+related_guides:
+  - aws-devops-interview-guide
+  - terraform-interview-guide
 related_technologies:
   - docker
-  - terraform
   - gitops
 status: published
 last_reviewed: 2026-08-23
@@ -135,7 +136,7 @@ If you have limited time before an interview, prioritize in this order:
 
 ## Related Guides
 
-More interview guides — AWS, Terraform, and a general DevOps guide — are in progress and will be cross-linked here once published.
+If your interview also covers AWS, the AWS DevOps Interview Guide is a natural companion — many teams running Kubernetes run it on EKS. If your interview also covers infrastructure provisioning, the Terraform Interview Guide is a companion too — Terraform-managed Kubernetes clusters raise their own state-and-module questions worth preparing alongside these.
 
 ## References
 

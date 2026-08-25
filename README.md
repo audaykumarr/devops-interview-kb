@@ -97,6 +97,7 @@ whole platform. Currently published:
 - [Kubernetes Interview Guide](https://devopsinterviewkb.com/guides/kubernetes-interview-guide)
 - [AWS DevOps Interview Guide](https://devopsinterviewkb.com/guides/aws-devops-interview-guide)
 - [Terraform Interview Guide](https://devopsinterviewkb.com/guides/terraform-interview-guide)
+- [GCP Interview Guide](https://devopsinterviewkb.com/guides/gcp-interview-guide)
 
 See the full list at [/guides](https://devopsinterviewkb.com/guides).
 
@@ -124,7 +125,7 @@ Helm · Terraform, Ansible · AWS, Azure, GCP · Security, DevSecOps ·
 Monitoring, Observability, SRE · GitOps, Argo CD · Networking, Databases ·
 System Design, real-world Scenarios, Troubleshooting.
 
-Coverage depth varies by topic — some areas (Kubernetes, AWS, Terraform)
+Coverage depth varies by topic — some areas (Kubernetes, AWS, Terraform, GCP)
 go deep with dedicated Guides; others are lighter today and are exactly
 where the [content-gap report](#follow-up-question-coverage) and community
 contributions matter most.
@@ -142,6 +143,7 @@ the question content itself.
 | [Kubernetes Interview Guide](https://devopsinterviewkb.com/guides/kubernetes-interview-guide) | Kubernetes and Helm |
 | [AWS DevOps Interview Guide](https://devopsinterviewkb.com/guides/aws-devops-interview-guide) | AWS |
 | [Terraform Interview Guide](https://devopsinterviewkb.com/guides/terraform-interview-guide) | Terraform |
+| [GCP Interview Guide](https://devopsinterviewkb.com/guides/gcp-interview-guide) | GCP |
 
 ## Roadmap
 
