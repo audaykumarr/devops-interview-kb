@@ -162,7 +162,7 @@ function requirementWeight(a: RequirementAssessment): number {
   return (a.mustHave ? MUST_HAVE_WEIGHT : NICE_TO_HAVE_WEIGHT) * GAP_MULTIPLIER[a.evidence];
 }
 
-function questionMatchesTag(question: InterviewQuestionEntry, tag: string): boolean {
+export function questionMatchesTag(question: InterviewQuestionEntry, tag: string): boolean {
   return question.technologies.includes(tag) || question.category === tag || question.question_type.includes(tag);
 }
 

@@ -4,11 +4,14 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DifficultyBadge, TypeBadge } from "./Badge";
+import { JobReadinessPanel } from "./JobReadinessPanel";
 import { JobSpecificSetup } from "./JobSpecificSetup";
 import { MarkdownSection } from "./MarkdownSection";
 import { PRACTICE_PROGRESS_STORAGE_KEY, loadPracticeProgress } from "@/lib/roadmap-progress";
 import { labelize } from "@/lib/format";
-import { computeJobFitSummary, type JobSpecificBuildResult } from "@/lib/job-match";
+import { buildRequirementAssessments, type JobSpecificBuildResult } from "@/lib/job-match";
+import { appendJobSessionRecord, loadJobSessionRecordsForFingerprint } from "@/lib/job-readiness-storage";
+import { loadJobProfile } from "@/lib/job-session-storage";
 import type { TaxonomyCategory } from "@/lib/questions";
 import {
   DEFAULT_INTERVIEW_CONFIG,
@@ -180,7 +183,7 @@ export function InterviewClient({
     return new Set(history.flatMap((h) => h.answers.map((a) => a.id)));
   }, []);
 
-  function startJobSpecificSession(result: JobSpecificBuildResult, count: InterviewQuestionCount, timeMode: TimeMode) {
+  function startJobSpecificSession(result: JobSpecificBuildResult, count: InterviewQuestionCount, timeMode: TimeMode, jdFingerprint: string) {
     const jobConfig: InterviewConfig = { ...DEFAULT_INTERVIEW_CONFIG, count: (result.questionIds.length || 1) as InterviewQuestionCount, timeMode };
     const newSession: ActiveInterviewSession = {
       config: jobConfig,
@@ -188,6 +191,7 @@ export function InterviewClient({
       startedAt: Date.now(),
       answers: [],
       explanations: result.explanations,
+      jdFingerprint,
     };
     saveActiveSession(newSession);
     setConfig(jobConfig);
@@ -237,7 +241,11 @@ export function InterviewClient({
       setRevealed(false);
       setAnnouncement(`Question ${index + 2} of ${sessionQuestions.length}.`);
     } else {
-      appendSessionHistory({ config: nextSession.config, startedAt: nextSession.startedAt, completedAt: Date.now(), answers: nextSession.answers });
+      const completedAt = Date.now();
+      appendSessionHistory({ config: nextSession.config, startedAt: nextSession.startedAt, completedAt, answers: nextSession.answers });
+      if (nextSession.jdFingerprint && nextSession.explanations) {
+        appendJobSessionRecord({ jdFingerprint: nextSession.jdFingerprint, completedAt, answers: nextSession.answers, explanations: nextSession.explanations });
+      }
       clearActiveSession();
       setSession(nextSession);
       setAnnouncement("Interview complete. Showing your results.");
@@ -247,7 +255,11 @@ export function InterviewClient({
 
   function endEarly() {
     if (!session) return;
-    appendSessionHistory({ config: session.config, startedAt: session.startedAt, completedAt: Date.now(), answers: session.answers });
+    const completedAt = Date.now();
+    appendSessionHistory({ config: session.config, startedAt: session.startedAt, completedAt, answers: session.answers });
+    if (session.jdFingerprint && session.explanations) {
+      appendJobSessionRecord({ jdFingerprint: session.jdFingerprint, completedAt, answers: session.answers, explanations: session.explanations });
+    }
     clearActiveSession();
     setAnnouncement("Interview ended early. Showing your results.");
     setPhase("results");
@@ -265,6 +277,15 @@ export function InterviewClient({
   }
 
   const results = phase === "results" && session ? computeResults(session.questionIds.length, session.answers) : null;
+
+  const jobReadinessData = useMemo(() => {
+    if (!session?.jdFingerprint) return null;
+    const profile = loadJobProfile();
+    if (!profile) return null;
+    const assessments = buildRequirementAssessments(profile.requirements, profile.resumeSkills);
+    const records = loadJobSessionRecordsForFingerprint(session.jdFingerprint);
+    return { assessments, resumeSkills: profile.resumeSkills, records };
+  }, [session?.jdFingerprint, phase]);
   const budgetSeconds = config.count * SECONDS_PER_QUESTION_BUDGET;
   const remaining = budgetSeconds - elapsedSeconds;
 
@@ -277,7 +298,7 @@ export function InterviewClient({
       <p className="mb-6 max-w-2xl text-slate-600 dark:text-slate-400">
         {mode === "general"
           ? "Configure a timed, assessment-style mock interview — pick a level, question types, and difficulty, then self-score your answers and see a breakdown at the end."
-          : "Turn your job description and résumé into a personalized, timed mock interview — built from the same question bank, but weighted toward the skills, gaps, and claims that matter most for the role, then self-score your answers and see a breakdown at the end."}
+          : "Turn your job description and resume into a personalized, timed mock interview — built from the same question bank, but weighted toward the skills, gaps, and claims that matter most for the role, then self-score your answers and see a breakdown at the end."}
       </p>
 
       {phase === "config" && (
@@ -491,27 +512,16 @@ export function InterviewClient({
             </p>
           </div>
 
-          {session?.explanations && (() => {
-            const fit = computeJobFitSummary(session.explanations, session.answers);
-            if (fit.gapTotal === 0 && fit.claimTotal === 0) return null;
-            return (
-              <div className="mt-6 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-                <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">JD Fit</h2>
-                <div className="mt-2 space-y-1 text-sm text-slate-600 dark:text-slate-400">
-                  {fit.gapTotal > 0 && (
-                    <p>
-                      Gap areas: {fit.gapNailed} of {fit.gapTotal} nailed
-                    </p>
-                  )}
-                  {fit.claimTotal > 0 && (
-                    <p>
-                      Claims validated: {fit.claimNailed} of {fit.claimTotal} nailed
-                    </p>
-                  )}
-                </div>
-              </div>
-            );
-          })()}
+          {jobReadinessData && (
+            <div className="mt-6">
+              <JobReadinessPanel
+                assessments={jobReadinessData.assessments}
+                resumeSkills={jobReadinessData.resumeSkills}
+                records={jobReadinessData.records}
+                pool={pool}
+              />
+            </div>
+          )}
 
           {results.byType.length > 0 && (
             <div className="mt-6">

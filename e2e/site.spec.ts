@@ -667,7 +667,7 @@ test.describe("DevOps Interview Knowledge Base", () => {
       await page.goto("/interview");
       await page.getByRole("button", { name: "Job-Specific Interview" }).click();
       await page.getByLabel("Job description").fill(GOLDEN_JD);
-      await page.getByLabel(/Your résumé/).fill(GOLDEN_RESUME);
+      await page.getByLabel(/Your resume/).fill(GOLDEN_RESUME);
       await page.getByRole("button", { name: "Review Extracted Skills" }).click();
 
       await expect(page.getByRole("heading", { name: "Detected JD Requirements" })).toBeVisible();
@@ -698,8 +698,7 @@ test.describe("DevOps Interview Knowledge Base", () => {
       }
 
       await expect(page.getByText(/points ·/)).toBeVisible();
-      await expect(page.getByRole("heading", { name: "JD Fit" })).toBeVisible();
-      await expect(page.getByText(/Gap areas: \d+ of \d+ nailed/)).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Job Readiness" })).toBeVisible();
 
       expect(errors).toEqual([]);
     });
@@ -708,7 +707,7 @@ test.describe("DevOps Interview Knowledge Base", () => {
       await page.goto("/interview");
       await page.getByRole("button", { name: "Job-Specific Interview" }).click();
       await page.getByLabel("Job description").fill("Kubernetes and Terraform required.");
-      await page.getByLabel(/Your résumé/).fill("Some Terraform experience.");
+      await page.getByLabel(/Your resume/).fill("Some Terraform experience.");
       await page.getByRole("button", { name: "Review Extracted Skills" }).click();
 
       await expect(page.getByRole("button", { name: "Remove Kubernetes from JD requirements" })).toBeVisible();
@@ -754,7 +753,7 @@ test.describe("DevOps Interview Knowledge Base", () => {
 
       const resumeFileInput = page.locator('input[type="file"]').nth(1);
       await resumeFileInput.setInputFiles(path.join(FIXTURES_DIR, "resume.docx"));
-      await expect(page.getByLabel(/Your résumé/)).toHaveValue(/Terraform/, { timeout: 15_000 });
+      await expect(page.getByLabel(/Your resume/)).toHaveValue(/Terraform/, { timeout: 15_000 });
     });
 
     test("a file over the size limit is rejected with a clear error and never sent anywhere", async ({ page }) => {
@@ -772,7 +771,7 @@ test.describe("DevOps Interview Knowledge Base", () => {
       await expect(page.getByText(/the limit is 5 MB/)).toBeVisible();
     });
 
-    test("Clear My Data removes the saved JD/résumé profile from localStorage", async ({ page }) => {
+    test("Clear My Data removes the saved JD/resume profile from localStorage", async ({ page }) => {
       await page.goto("/interview");
       await page.getByRole("button", { name: "Job-Specific Interview" }).click();
       await page.getByLabel("Job description").fill(GOLDEN_JD);
@@ -787,7 +786,7 @@ test.describe("DevOps Interview Knowledge Base", () => {
       await expect(page.getByLabel("Job description")).toHaveValue("");
     });
 
-    test("recently-answered questions are less likely to repeat when rebuilding from the same JD/résumé", async ({ page }) => {
+    test("recently-answered questions are less likely to repeat when rebuilding from the same JD/resume", async ({ page }) => {
       await page.goto("/interview");
       await page.getByRole("button", { name: "Job-Specific Interview" }).click();
       await page.getByLabel("Job description").fill("Kubernetes required.");
@@ -802,7 +801,7 @@ test.describe("DevOps Interview Knowledge Base", () => {
         await page.getByRole("button", { name: "Reveal Answer" }).click();
         await page.getByRole("button", { name: "Nailed it" }).click();
       }
-      await expect(page.getByRole("heading", { name: "JD Fit" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Job Readiness" })).toBeVisible();
 
       await page.getByRole("button", { name: "Rebuild From Same JD / Resume" }).click();
       await page.getByRole("button", { name: "Build My Interview" }).click();
@@ -819,7 +818,7 @@ test.describe("DevOps Interview Knowledge Base", () => {
       await expect(page.getByLabel("Job description")).toBeVisible();
 
       await page.getByLabel("Job description").fill(GOLDEN_JD);
-      await page.getByLabel(/Your résumé/).fill(GOLDEN_RESUME);
+      await page.getByLabel(/Your resume/).fill(GOLDEN_RESUME);
       await page.getByRole("button", { name: "Review Extracted Skills" }).focus();
       await page.keyboard.press("Enter");
       await expect(page.getByRole("heading", { name: "Interview Risk / Focus Areas" })).toBeVisible();
@@ -835,7 +834,7 @@ test.describe("DevOps Interview Knowledge Base", () => {
         await page.goto("/interview");
         await page.getByRole("button", { name: "Job-Specific Interview" }).click();
         await page.getByLabel("Job description").fill(GOLDEN_JD);
-        await page.getByLabel(/Your résumé/).fill(GOLDEN_RESUME);
+        await page.getByLabel(/Your resume/).fill(GOLDEN_RESUME);
         await page.getByRole("button", { name: "Review Extracted Skills" }).click();
         await expect(page.getByRole("heading", { name: "Interview Risk / Focus Areas" })).toBeVisible();
 
@@ -852,13 +851,180 @@ test.describe("DevOps Interview Knowledge Base", () => {
       await page.goto("/interview");
       await page.getByRole("button", { name: "Job-Specific Interview" }).click();
       await page.getByLabel("Job description").fill(GOLDEN_JD);
-      await page.getByLabel(/Your résumé/).fill(GOLDEN_RESUME);
+      await page.getByLabel(/Your resume/).fill(GOLDEN_RESUME);
       await page.getByRole("button", { name: "Review Extracted Skills" }).click();
       await page.getByRole("button", { name: "Build My Interview" }).click();
       for (let i = 0; i < 5 && (await page.getByRole("button", { name: "Reveal Answer" }).isVisible().catch(() => false)); i++) {
         await page.getByRole("button", { name: "Reveal Answer" }).click();
         await page.getByRole("button", { name: "Nailed it" }).click();
       }
+      expect(errors).toEqual([]);
+    });
+  });
+
+  test.describe("Job Readiness", () => {
+    test("review screen shows a coverage-only readiness band before any session is run", async ({ page }) => {
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+      await page.getByLabel("Job description").fill(GOLDEN_JD);
+      await page.getByLabel(/Your resume/).fill(GOLDEN_RESUME);
+      await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+
+      await expect(page.getByRole("heading", { name: "Job Readiness" })).toBeVisible();
+      await expect(page.getByText(/readiness$/)).toBeVisible();
+      await expect(page.getByText(/complete an interview session for this JD to add a performance-informed component/)).toBeVisible();
+      await expect(page.getByText(/Not yet validated — run a Job-Specific session/)).toBeVisible();
+    });
+
+    test("completing a session produces a full readiness panel: band, per-requirement performance, and claim validation", async ({ page }) => {
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+      await page.getByLabel("Job description").fill(GOLDEN_JD);
+      await page.getByLabel(/Your resume/).fill(GOLDEN_RESUME);
+      await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+      await page.getByRole("button", { name: "10", exact: true }).click();
+      await page.getByRole("button", { name: "Build My Interview" }).click();
+
+      for (let i = 0; i < 10 && (await page.getByRole("button", { name: "Reveal Answer" }).isVisible().catch(() => false)); i++) {
+        await page.getByRole("button", { name: "Reveal Answer" }).click();
+        await page.getByRole("button", { name: "Nailed it" }).click();
+      }
+
+      await expect(page.getByRole("heading", { name: "Job Readiness" })).toBeVisible();
+      await expect(page.getByText(/interview performance \d+% \(\d+ of \d+ JD requirements tested so far\)/)).toBeVisible();
+      await expect(page.getByRole("heading", { name: "By Requirement" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Resume Claim Validation" })).toBeVisible();
+      await expect(page.getByText(/Interview evidence: Nailed it/)).toBeVisible();
+      await expect(page.getByText(/not a graded or verified evaluation/)).toBeVisible();
+    });
+
+    test("a claim that goes badly is shown plainly, not glossed over", async ({ page }) => {
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+      await page.getByLabel("Job description").fill("Terraform required.");
+      await page.getByLabel(/Your resume/).fill("Architected the Terraform module structure used across all environments.");
+      await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+      await page.getByRole("button", { name: "5", exact: true }).click();
+      await page.getByRole("button", { name: "Build My Interview" }).click();
+
+      for (let i = 0; i < 5 && (await page.getByRole("button", { name: "Reveal Answer" }).isVisible().catch(() => false)); i++) {
+        await page.getByRole("button", { name: "Reveal Answer" }).click();
+        await page.getByRole("button", { name: "Need more work" }).click();
+      }
+
+      await expect(page.getByText(/Interview evidence: Need more work/)).toBeVisible();
+      const band = page.getByText(/readiness$/);
+      await expect(band).toContainText("Low");
+    });
+
+    test("Practice Next recommendations link only to real, existing question pages", async ({ page }) => {
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+      await page.getByLabel("Job description").fill("Requirements:\n- Kubernetes\n- Security");
+      await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+
+      await expect(page.getByRole("heading", { name: "Practice Next" })).toBeVisible();
+      const firstLink = page.locator("h3", { hasText: "Practice Next" }).locator("xpath=following-sibling::div[1]//a").first();
+      const href = await firstLink.getAttribute("href");
+      expect(href).toMatch(/^\/questions\//);
+      const response = await page.request.get(href!);
+      expect(response.status()).toBe(200);
+    });
+
+    test("Clear My Data removes the Job Readiness history along with the profile", async ({ page }) => {
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+      await page.getByLabel("Job description").fill(GOLDEN_JD);
+      await page.getByLabel(/Your resume/).fill(GOLDEN_RESUME);
+      await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+      await page.getByRole("button", { name: "5", exact: true }).click();
+      await page.getByRole("button", { name: "Build My Interview" }).click();
+      for (let i = 0; i < 5 && (await page.getByRole("button", { name: "Reveal Answer" }).isVisible().catch(() => false)); i++) {
+        await page.getByRole("button", { name: "Reveal Answer" }).click();
+        await page.getByRole("button", { name: "Nailed it" }).click();
+      }
+      await page.getByRole("button", { name: "Rebuild From Same JD / Resume" }).click();
+
+      const before = await page.evaluate(() => localStorage.getItem("job-specific-session-history"));
+      expect(before).toBeTruthy();
+
+      await page.getByRole("button", { name: "Clear My Data" }).click();
+      const after = await page.evaluate(() => localStorage.getItem("job-specific-session-history"));
+      expect(after).toBeNull();
+    });
+
+    test("editing the JD text changes the fingerprint and does not reuse readiness data from the previous JD", async ({ page }) => {
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+      await page.getByLabel("Job description").fill("Kubernetes required.");
+      await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+      await page.getByRole("button", { name: "5", exact: true }).click();
+      await page.getByRole("button", { name: "Build My Interview" }).click();
+      for (let i = 0; i < 5 && (await page.getByRole("button", { name: "Reveal Answer" }).isVisible().catch(() => false)); i++) {
+        await page.getByRole("button", { name: "Reveal Answer" }).click();
+        await page.getByRole("button", { name: "Nailed it" }).click();
+      }
+      await page.getByRole("button", { name: "Rebuild From Same JD / Resume" }).click();
+      await expect(page.getByText(/interview performance/)).toBeVisible();
+
+      await page.getByRole("button", { name: "Edit JD / resume text" }).click();
+      await page.getByLabel("Job description").fill("Security required.");
+      await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+
+      await expect(page.getByText(/complete an interview session for this JD to add a performance-informed component/)).toBeVisible();
+    });
+
+    test("no network request is made when building a Job-Specific session or computing readiness", async ({ page }) => {
+      const externalRequests: string[] = [];
+      page.on("request", (r) => {
+        const url = r.url();
+        if (!url.startsWith("http://localhost") && !url.startsWith("data:")) externalRequests.push(url);
+      });
+
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+      await page.getByLabel("Job description").fill(GOLDEN_JD);
+      await page.getByLabel(/Your resume/).fill(GOLDEN_RESUME);
+      await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+      await page.getByRole("button", { name: "5", exact: true }).click();
+      await page.getByRole("button", { name: "Build My Interview" }).click();
+      for (let i = 0; i < 5 && (await page.getByRole("button", { name: "Reveal Answer" }).isVisible().catch(() => false)); i++) {
+        await page.getByRole("button", { name: "Reveal Answer" }).click();
+        await page.getByRole("button", { name: "Nailed it" }).click();
+      }
+
+      expect(externalRequests).toEqual([]);
+    });
+
+    for (const width of [375, 390, 412]) {
+      test(`Job Readiness panel renders correctly at ${width}px with no horizontal overflow`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.goto("/interview");
+        await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+        await page.getByLabel("Job description").fill(GOLDEN_JD);
+        await page.getByLabel(/Your resume/).fill(GOLDEN_RESUME);
+        await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+        await expect(page.getByRole("heading", { name: "Job Readiness" })).toBeVisible();
+
+        const [scrollWidth, clientWidth] = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+        expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
+      });
+    }
+
+    test("Job Readiness controls are reachable by keyboard and the panel has no console errors", async ({ page }) => {
+      const errors: string[] = [];
+      page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+      page.on("pageerror", (e) => errors.push(String(e)));
+
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).focus();
+      await page.keyboard.press("Enter");
+      await page.getByLabel("Job description").fill(GOLDEN_JD);
+      await page.getByLabel(/Your resume/).fill(GOLDEN_RESUME);
+      await page.getByRole("button", { name: "Review Extracted Skills" }).focus();
+      await page.keyboard.press("Enter");
+      await expect(page.getByRole("heading", { name: "Job Readiness" })).toBeVisible();
+
       expect(errors).toEqual([]);
     });
   });

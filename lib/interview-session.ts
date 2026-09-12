@@ -204,6 +204,7 @@ export interface ActiveInterviewSession {
   startedAt: number;
   answers: AnsweredQuestion[];
   explanations?: Record<string, JobMatchExplanation>;
+  jdFingerprint?: string;
 }
 
 export interface CompletedInterviewSession {

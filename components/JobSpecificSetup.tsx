@@ -19,9 +19,12 @@ import {
   type JobSpecificBuildResult,
   type ResumeSkill,
 } from "@/lib/job-match";
+import { computeJdFingerprint } from "@/lib/job-readiness";
+import { clearJobSessionHistory, loadJobSessionRecordsForFingerprint } from "@/lib/job-readiness-storage";
 import { clearJobProfile, loadJobProfile, saveJobProfile } from "@/lib/job-session-storage";
 import { extractTextFromFile, MAX_FILE_SIZE_BYTES } from "@/lib/resume-extraction";
 import { CANONICAL_TAGS, isCanonicalTag, type TechTag } from "@/lib/tech-taxonomy";
+import { JobReadinessPanel } from "./JobReadinessPanel";
 
 const TIME_MODE_LABELS: Record<TimeMode, string> = { off: "Off", "per-question": "Per-question guideline", session: "Session budget" };
 const IDENTITY_SHUFFLE = <T,>(items: T[]): T[] => items;
@@ -104,7 +107,7 @@ export function JobSpecificSetup({
 }: {
   pool: InterviewQuestionEntry[];
   recentlySeenIds: ReadonlySet<string>;
-  onBuild: (result: JobSpecificBuildResult, count: InterviewQuestionCount, timeMode: TimeMode) => void;
+  onBuild: (result: JobSpecificBuildResult, count: InterviewQuestionCount, timeMode: TimeMode, jdFingerprint: string) => void;
 }) {
   const savedProfile = useRef(loadJobProfile()).current;
   const [step, setStep] = useState<"input" | "review">(savedProfile ? "review" : "input");
@@ -158,8 +161,12 @@ export function JobSpecificSetup({
     [pool, assessments, resumeSkills, count, recentlySeenIds],
   );
 
+  const jdFingerprint = useMemo(() => computeJdFingerprint(jdText), [jdText]);
+  const readinessRecords = useMemo(() => loadJobSessionRecordsForFingerprint(jdFingerprint), [jdFingerprint]);
+
   function handleClearData() {
     clearJobProfile();
+    clearJobSessionHistory();
     setJdText("");
     setResumeText("");
     setRequirements([]);
@@ -170,7 +177,7 @@ export function JobSpecificSetup({
 
   function buildInterview() {
     const result = buildJobSpecificSession(pool, assessments, resumeSkills, count, recentlySeenIds);
-    onBuild(result, count, timeMode);
+    onBuild(result, count, timeMode, jdFingerprint);
   }
 
   const requirementTags = new Set(requirements.map((r) => r.tag));
@@ -180,10 +187,10 @@ export function JobSpecificSetup({
     return (
       <div className="space-y-6">
         <p className="text-sm text-slate-600 dark:text-slate-400">
-          Paste (or upload) the job description and your résumé. Everything here stays in your browser — nothing is uploaded to a server.
+          Paste (or upload) the job description and your resume. Everything here stays in your browser — nothing is uploaded to a server.
         </p>
 
-        {dataCleared && <p className="text-sm text-emerald-700 dark:text-emerald-400">Your saved JD/résumé data has been cleared.</p>}
+        {dataCleared && <p className="text-sm text-emerald-700 dark:text-emerald-400">Your saved JD/resume data has been cleared.</p>}
 
         <div>
           <label htmlFor="jd-text" className="text-sm font-semibold text-slate-900 dark:text-slate-100">
@@ -214,14 +221,14 @@ export function JobSpecificSetup({
 
         <div>
           <label htmlFor="resume-text" className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-            Your résumé <span className="font-normal text-slate-500 dark:text-slate-400">(optional — leave blank to see the JD's requirements with no evidence assumed)</span>
+            Your resume <span className="font-normal text-slate-500 dark:text-slate-400">(optional — leave blank to see the JD's requirements with no evidence assumed)</span>
           </label>
           <textarea
             id="resume-text"
             value={resumeText}
             onChange={(e) => setResumeText(e.target.value)}
             rows={8}
-            placeholder="Paste your résumé here…"
+            placeholder="Paste your resume here…"
             className="mt-2 w-full rounded-md border border-slate-300 bg-white p-3 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
           />
           <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -257,9 +264,12 @@ export function JobSpecificSetup({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Detected JD Requirements</h2>
         <button type="button" onClick={() => setStep("input")} className="text-sm text-indigo-600 hover:underline dark:text-indigo-400">
-          Edit JD / résumé text
+          Edit JD / resume text
         </button>
       </div>
+
+      <JobReadinessPanel assessments={assessments} resumeSkills={resumeSkills} records={readinessRecords} pool={pool} />
+
       <div>
         <div className="flex flex-wrap gap-2">
           {requirements.length === 0 && <p className="text-sm text-slate-500 dark:text-slate-400">No skills detected — add some below.</p>}
@@ -283,7 +293,7 @@ export function JobSpecificSetup({
           </p>
         )}
         <div className="mt-2 flex flex-wrap gap-2">
-          {resumeSkills.length === 0 && <p className="text-sm text-slate-500 dark:text-slate-400">No skills detected in your résumé.</p>}
+          {resumeSkills.length === 0 && <p className="text-sm text-slate-500 dark:text-slate-400">No skills detected in your resume.</p>}
           {resumeSkills.map((s) => (
             <RemovableChip
               key={s.tag}
