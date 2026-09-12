@@ -6,9 +6,9 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      // Parameterized search/practice views are a JS-rendered subset of already-indexed
+      // Parameterized search/practice/interview views are a JS-rendered subset of already-indexed
       // category/technology pages; disallowing avoids thin/duplicate-content crawl.
-      disallow: ["/search?*", "/practice?*"],
+      disallow: ["/search?*", "/practice?*", "/interview?*"],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
   };

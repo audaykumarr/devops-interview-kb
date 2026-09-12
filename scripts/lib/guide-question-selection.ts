@@ -1,5 +1,3 @@
-import type { QuestionIndexEntry } from "./index-builder";
-
 /**
  * Types preferred, in order, when picking representative questions for a
  * subcategory preview — troubleshooting/scenario/practical first, since
@@ -29,16 +27,21 @@ const TYPE_PRIORITY = [
  * not-yet-covered type in TYPE_PRIORITY order (for type diversity), then
  * whatever's left in the original stable order. Never random, never
  * alphabetical-by-title — the same input always produces the same output.
+ *
+ * Generic over any shape carrying at least `id`/`question_type` (all this
+ * function actually reads) so callers with a different question view than
+ * QuestionIndexEntry — e.g. Interview Mode's InterviewQuestionEntry — can
+ * reuse this selection logic without an unsafe cast or a duplicate copy.
  */
-export function pickRepresentativeQuestions(
-  questions: QuestionIndexEntry[],
+export function pickRepresentativeQuestions<T extends { id: string; question_type: string[] }>(
+  questions: T[],
   featuredIds: ReadonlySet<string>,
   limit = 3,
-): QuestionIndexEntry[] {
+): T[] {
   const featured = questions.filter((q) => featuredIds.has(q.id));
   const rest = questions.filter((q) => !featuredIds.has(q.id));
 
-  const picked: QuestionIndexEntry[] = [...featured].slice(0, limit);
+  const picked: T[] = [...featured].slice(0, limit);
   const usedIds = new Set(picked.map((q) => q.id));
   const coveredTypes = new Set(picked.flatMap((q) => q.question_type));
 

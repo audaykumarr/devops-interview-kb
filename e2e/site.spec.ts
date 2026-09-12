@@ -1,6 +1,12 @@
 import { expect, test } from "@playwright/test";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const SAMPLE_QUESTION_PATH = "/questions/aws/iam/migrating-ec2-admin-user-to-least-privilege-role";
+const FIXTURES_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
+const GOLDEN_JD = "AWS, Kubernetes, Terraform, GitHub Actions, and Security experience required.";
+const GOLDEN_RESUME =
+  "Experience with AWS and ECS for container workloads. Built and maintained Terraform modules for three years. Automated deployments using GitHub Actions.";
 
 test.describe("DevOps Interview Knowledge Base", () => {
   test("homepage loads", async ({ page }) => {
@@ -14,13 +20,41 @@ test.describe("DevOps Interview Knowledge Base", () => {
     expect(consoleErrors).toEqual([]);
   });
 
-  test("homepage shows the total question count and links to Guides and Practice as distinct entry points", async ({ page }) => {
+  test("homepage shows the total question count and links to Guides and Interview Mode as distinct entry points", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByText(/^600 original, scenario-driven/)).toBeVisible();
     const guidesCard = page.getByRole("link", { name: /Learn with a Guide/ });
     await expect(guidesCard).toHaveAttribute("href", "/guides");
-    const practiceCard = page.getByRole("link", { name: /Jump into Practice/ });
-    await expect(practiceCard).toHaveAttribute("href", "/practice");
+    const interviewCard = page.getByRole("link", { name: /Start Interview Mode/ });
+    await expect(interviewCard).toHaveAttribute("href", "/interview");
+  });
+
+  test("homepage no longer links to the deprecated /practice route", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByRole("link", { name: /Jump into Practice/ })).toHaveCount(0);
+    await expect(page.locator("a[href='/practice']")).toHaveCount(0);
+  });
+
+  test("header no longer links to /practice and links to /interview", async ({ page }) => {
+    await page.goto("/");
+    const nav = page.locator("nav").first();
+    await expect(nav.locator("a[href='/practice']")).toHaveCount(0);
+    await expect(nav.getByRole("link", { name: "Interview Mode" })).toHaveAttribute("href", "/interview");
+  });
+
+  test("/practice and parameterized /practice URLs permanently redirect (308) to /interview", async ({ page, request }) => {
+    const bare = await request.get("/practice", { maxRedirects: 0 });
+    expect(bare.status()).toBe(308);
+    expect(bare.headers()["location"]).toContain("/interview");
+
+    const withParams = await request.get("/practice?category=aws&difficulty=advanced", { maxRedirects: 0 });
+    expect(withParams.status()).toBe(308);
+    expect(withParams.headers()["location"]).toContain("/interview");
+    expect(withParams.headers()["location"]).not.toContain("category");
+
+    const response = await page.goto("/practice?category=aws");
+    expect(response?.url()).toContain("/interview");
+    expect(response?.url()).not.toContain("/practice");
   });
 
   test("category page loads and lists its questions", async ({ page }) => {
@@ -350,92 +384,490 @@ test.describe("DevOps Interview Knowledge Base", () => {
     expect(jsonLdCount).toBeGreaterThanOrEqual(2); // BreadcrumbList + QAPage
   });
 
-  test("practice mode reveals the answer, marks progress, and advances", async ({ page }) => {
-    await page.goto("/practice");
-    await expect(page.getByRole("heading", { name: "Practice" })).toBeVisible();
+  test("interview mode loads with all configuration groups and Header/sitemap/robots wiring is correct", async ({ page, request }) => {
+    const response = await page.goto("/interview");
+    expect(response?.status()).toBe(200);
+    await expect(page.getByRole("heading", { level: 1, name: "Interview Mode" })).toBeVisible();
+    for (const heading of ["Interview Level", "Question Type", "Difficulty", "Category", "Number of Questions", "Time Limit"]) {
+      await expect(page.getByRole("heading", { level: 2, name: heading })).toBeVisible();
+    }
+    await expect(page.getByRole("button", { name: "Start Interview" })).toBeVisible();
 
-    const card = page.locator("p.text-lg.font-medium");
-    await expect(card).toBeVisible();
+    await expect(page.locator("nav").getByRole("link", { name: "Interview Mode" })).toHaveAttribute("href", "/interview");
+
+    const sitemapBody = await (await request.get("/sitemap.xml")).text();
+    expect(sitemapBody).toContain("/interview</loc>");
+    expect(sitemapBody).not.toContain("/practice</loc>");
+    expect(sitemapBody.match(/\/interview<\/loc>/g)).toHaveLength(1);
+    const robotsBody = await (await request.get("/robots.txt")).text();
+    expect(robotsBody).toContain("/interview?*");
+    expect(robotsBody).toContain("/practice?*");
+  });
+
+  test("interview mode's live match count updates as filters change, including a zero-match state", async ({ page }) => {
+    await page.goto("/interview");
+    const banner = page.locator("p", { hasText: /question.*match|No questions match/ });
+    await expect(banner).toContainText(/\d+ questions? match/);
+
+    const categorySelect = page.getByRole("combobox");
+    await categorySelect.selectOption({ label: "Helm" });
+    await expect(banner).toContainText("14 questions match");
+
+    // Expert difficulty only ever computes to the staff-principal interview level, never
+    // junior-devops — this combination is structurally guaranteed empty, not just incidentally
+    // thin data, which is what makes it a reliable zero-match fixture for this test.
+    await page.getByRole("button", { name: "Expert" }).click();
+    await page.getByRole("button", { name: "Junior DevOps" }).click();
+    await expect(page.getByRole("button", { name: "Start Interview" })).toBeDisabled();
+    await expect(page.getByText("No questions match these filters.")).toBeVisible();
+  });
+
+  test("interview mode config is reflected in the URL and shareable via direct navigation", async ({ page }) => {
+    await page.goto("/interview");
+    await page.getByRole("combobox").selectOption({ label: "Helm" });
+    await page.getByRole("button", { name: "5", exact: true }).click();
+    await expect(page).toHaveURL(/[?&]category=helm/);
+    await expect(page).toHaveURL(/[?&]count=5/);
+
+    await page.goto("/interview?category=helm&count=5");
+    await expect(page.getByRole("combobox")).toHaveValue("helm");
+    await expect(page.getByRole("button", { name: "5", exact: true })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  test("starting an interview honestly reduces the count when fewer questions match than requested", async ({ page }) => {
+    await page.goto("/interview?category=helm&count=20");
+    await expect(page.getByText("Only 14 questions match — starting with 14.")).toBeVisible();
+    await page.getByRole("button", { name: "Start Interview" }).click();
+    await expect(page.getByText("Question 1 of 14", { exact: true })).toBeVisible();
+  });
+
+  test("interview session reveals the answer, offers three self-assessments, and advances", async ({ page }) => {
+    await page.goto("/interview?category=helm&count=5");
+    await page.getByRole("button", { name: "Start Interview" }).click();
+    await expect(page.getByText("Question 1 of 5", { exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: "Reveal Answer" }).click();
     await expect(page.getByRole("link", { name: "View full explanation →" })).toBeVisible();
-
-    await page.getByRole("button", { name: "Got it" }).click();
-    await expect(page.getByRole("button", { name: "Reveal Answer" })).toBeVisible();
-    await expect(page.getByText(/1 known/)).toBeVisible();
-  });
-
-  test("practice mode category filter narrows the pool", async ({ page }) => {
-    await page.goto("/practice");
-    await page.getByRole("combobox").first().selectOption({ label: "AWS" });
-    await expect(page.getByText(/Card 1 of \d+/)).toBeVisible();
-  });
-
-  test("practice mode shows a completion state instead of silently looping", async ({ page }) => {
-    await page.goto("/practice");
-    await page.getByRole("combobox").first().selectOption({ label: "Helm" });
-    await expect(page).toHaveURL(/[?&]category=helm/);
-
-    const progressText = await page.getByText(/Card \d+ of \d+/).textContent();
-    const total = Number(progressText!.match(/of (\d+)/)![1]);
-
-    for (let i = 0; i < total; i++) {
-      await page.getByRole("button", { name: "Reveal Answer" }).click();
-      await page.getByRole("button", { name: "Need Review" }).click();
+    for (const label of ["Nailed it", "Partially there", "Need more work"]) {
+      await expect(page.getByRole("button", { name: label })).toBeVisible();
     }
 
-    await expect(page.getByText("You've gone through this set.")).toBeVisible();
-    await expect(page.getByText(new RegExp(`${total} need review`))).toBeVisible();
-
-    await page.getByRole("button", { name: "Practice Again" }).click();
+    await page.getByRole("button", { name: "Nailed it" }).click();
+    await expect(page.getByText("Question 2 of 5", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Reveal Answer" })).toBeVisible();
   });
 
-  test("progress persists across a reload via localStorage", async ({ page }) => {
-    await page.goto("/practice");
-    await page.getByRole("combobox").first().selectOption({ label: "Helm" });
+  test("completing an interview session shows score, per-type/per-level breakdowns, and a needs-work list", async ({ page }) => {
+    await page.goto("/interview?category=helm&count=5");
+    await page.getByRole("button", { name: "Start Interview" }).click();
+
+    for (const label of ["Nailed it", "Partially there", "Need more work", "Nailed it", "Need more work"]) {
+      await page.getByRole("button", { name: "Reveal Answer" }).click();
+      await page.getByRole("button", { name: label }).click();
+    }
+
+    await expect(page.getByText("5 / 10 points · 50%")).toBeVisible();
+    await expect(page.getByText("5 of 5 questions answered")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "By Question Type" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Worth Revisiting" })).toBeVisible();
+    const revisitLinks = page.locator("h2", { hasText: "Worth Revisiting" }).locator("xpath=following-sibling::ul[1]//a");
+    await expect(revisitLinks).toHaveCount(2);
+    for (const href of await revisitLinks.evaluateAll((links) => links.map((l) => l.getAttribute("href")))) {
+      expect(href).toMatch(/^\/questions\//);
+    }
+  });
+
+  test("retry same configuration starts a fresh session with the same config; new configuration returns to setup", async ({ page }) => {
+    await page.goto("/interview?category=helm&count=5");
+    await page.getByRole("button", { name: "Start Interview" }).click();
+    for (let i = 0; i < 5; i++) {
+      await page.getByRole("button", { name: "Reveal Answer" }).click();
+      await page.getByRole("button", { name: "Nailed it" }).click();
+    }
+    await expect(page.getByRole("button", { name: "Retry Same Configuration" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Retry Same Configuration" }).click();
+    await expect(page.getByText("Question 1 of 5", { exact: true })).toBeVisible();
+
+    for (let i = 0; i < 5; i++) {
+      await page.getByRole("button", { name: "Reveal Answer" }).click();
+      await page.getByRole("button", { name: "Nailed it" }).click();
+    }
+    await page.getByRole("button", { name: "New Configuration" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Interview Mode" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Start Interview" })).toBeVisible();
+  });
+
+  test("an in-progress interview session is recoverable after a reload, but only via an explicit Resume choice — never silently", async ({ page }) => {
+    await page.goto("/interview?category=helm&count=5");
+    await page.getByRole("button", { name: "Start Interview" }).click();
     await page.getByRole("button", { name: "Reveal Answer" }).click();
-    await page.getByRole("button", { name: "Got it" }).click();
+    await page.getByRole("button", { name: "Nailed it" }).click();
+    await expect(page.getByText("Question 2 of 5", { exact: true })).toBeVisible();
+
+    // Reloading (or navigating away and back) must land on the config screen, not silently
+    // resume mid-session — the in-progress session is offered, not imposed.
+    await page.reload();
+    await expect(page.getByRole("heading", { level: 1, name: "Interview Mode" })).toBeVisible();
+    await expect(page.getByText("You have an interview in progress — question 2 of 5.")).toBeVisible();
+
+    await page.getByRole("button", { name: "Resume Interview" }).click();
+    await expect(page.getByText("Question 2 of 5", { exact: true })).toBeVisible();
+  });
+
+  test("a resumable session can be explicitly discarded instead of resumed", async ({ page }) => {
+    await page.goto("/interview?category=helm&count=5");
+    await page.getByRole("button", { name: "Start Interview" }).click();
+    await page.getByRole("button", { name: "Reveal Answer" }).click();
+    await page.getByRole("button", { name: "Nailed it" }).click();
 
     await page.reload();
-    const stored = await page.evaluate(() => localStorage.getItem("practice-progress"));
-    expect(stored).toBeTruthy();
-    expect(Object.keys(JSON.parse(stored!)).length).toBeGreaterThan(0);
-
-    page.on("dialog", (d) => d.accept());
-    await page.getByRole("button", { name: "Reset progress" }).click();
-    const clearedStored = await page.evaluate(() => localStorage.getItem("practice-progress"));
-    expect(JSON.parse(clearedStored!)).toEqual({});
+    await page.getByRole("button", { name: "Discard and Start Fresh" }).click();
+    await expect(page.getByText(/in progress/)).toHaveCount(0);
+    const stored = await page.evaluate(() => localStorage.getItem("interview-active-session"));
+    expect(stored).toBeNull();
   });
 
-  test("practice mode filters are reflected in the URL and shareable via direct navigation", async ({ page }) => {
-    await page.goto("/practice");
-    await page.getByRole("combobox").first().selectOption({ label: "AWS" });
-    await expect(page).toHaveURL(/[?&]category=aws/);
-
-    await page.goto("/practice?category=aws");
-    await expect(page.getByRole("combobox").first()).toHaveValue("aws");
-    await expect(page.getByText(/Card 1 of \d+/)).toBeVisible();
-  });
-
-  test("review only toggle narrows the pool to cards marked for review", async ({ page }) => {
-    await page.goto("/practice");
-    await page.getByRole("combobox").first().selectOption({ label: "Helm" });
-    // Wait for the category filter's URL (and therefore the Helm-filtered card pool) to actually
-    // settle before marking a card — otherwise, under load, "Need Review" can race ahead of the
-    // filter change and mark a card from the still-unfiltered "All categories" pool instead of a
-    // Helm one, which would make "Card 1 of 1" below never appear (the real root cause of the flake).
-    await page.waitForURL(/[?&]category=helm/);
+  test("ending an interview session early still produces a results screen scored on answered questions only", async ({ page }) => {
+    await page.goto("/interview?category=helm&count=5");
+    await page.getByRole("button", { name: "Start Interview" }).click();
     await page.getByRole("button", { name: "Reveal Answer" }).click();
-    await page.getByRole("button", { name: "Need Review" }).click();
+    await page.getByRole("button", { name: "Nailed it" }).click();
 
-    await page.getByRole("checkbox", { name: "Review only" }).click();
-    await expect(page.getByRole("checkbox", { name: "Review only" })).toBeChecked();
-    await expect(page).toHaveURL(/[?&]review=1/);
-    await expect(page.getByText("Card 1 of 1")).toBeVisible();
+    await page.getByRole("button", { name: "End session early" }).click();
+    await expect(page.getByText("2 / 2 points · 100%")).toBeVisible();
+    await expect(page.getByText("1 of 5 questions answered")).toBeVisible();
+  });
 
-    await page.getByRole("combobox").first().selectOption({ label: "AWS" });
-    await expect(page.getByText("Nothing marked for review with these filters.")).toBeVisible();
+  test("interview session history accumulates across multiple completed sessions", async ({ page }) => {
+    await page.goto("/interview?category=helm&count=5");
+    for (let session = 0; session < 2; session++) {
+      await page.getByRole("button", { name: session === 0 ? "Start Interview" : "Retry Same Configuration" }).click();
+      for (let i = 0; i < 5; i++) {
+        await page.getByRole("button", { name: "Reveal Answer" }).click();
+        await page.getByRole("button", { name: "Nailed it" }).click();
+      }
+    }
+    const history = await page.evaluate(() => JSON.parse(localStorage.getItem("interview-session-history") ?? "[]"));
+    expect(history.length).toBe(2);
+    expect(history[0].answers.length).toBe(5);
+  });
+
+  test("interview self-assessment cross-writes into practice-progress and the Roadmap's stage-in-progress inference keeps working", async ({ page }) => {
+    await page.goto("/interview?category=helm&count=5");
+    await page.getByRole("button", { name: "Start Interview" }).click();
+    await page.getByRole("button", { name: "Reveal Answer" }).click();
+    await page.getByRole("button", { name: "Nailed it" }).click();
+
+    const stored = await page.evaluate(() => localStorage.getItem("practice-progress"));
+    expect(Object.keys(JSON.parse(stored!)).length).toBe(1);
+
+    await page.goto("/roadmaps/devops-engineer-roadmap");
+    const orchestrationStage = page.locator("#orchestration");
+    await expect(orchestrationStage.getByRole("heading", { level: 3, name: "Orchestration" })).toBeVisible();
+    await expect(orchestrationStage.getByText("In Progress")).toBeVisible();
+  });
+
+  test("interview timer: session budget mode (the default) shows a live countdown", async ({ page }) => {
+    await page.goto("/interview?category=helm&count=5");
+    await page.getByRole("button", { name: "Start Interview" }).click();
+    await expect(page.getByText(/remaining/)).toBeVisible();
+  });
+
+  test("interview timer: per-question guideline mode shows a suggested budget, not a countdown", async ({ page }) => {
+    await page.goto("/interview?category=helm&count=5&time=per-question");
+    await page.getByRole("button", { name: "Start Interview" }).click();
+    await expect(page.getByText(/suggested/)).toBeVisible();
+    await expect(page.getByText(/remaining/)).toHaveCount(0);
+  });
+
+  test("interview timer: off mode shows no timer UI at all", async ({ page }) => {
+    await page.goto("/interview?category=helm&count=5&time=off");
+    await page.getByRole("button", { name: "Start Interview" }).click();
+    await expect(page.getByText(/remaining|suggested/)).toHaveCount(0);
+  });
+
+  test("interview mode renders correctly at mobile viewports with no horizontal overflow, in both config and active phases", async ({ page }) => {
+    for (const viewport of [
+      { width: 375, height: 812 },
+      { width: 390, height: 844 },
+      { width: 412, height: 915 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto("/interview?category=helm&count=5");
+      let [scrollWidth, clientWidth] = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+      expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
+
+      await page.getByRole("button", { name: "Start Interview" }).click();
+      await page.getByRole("button", { name: "Reveal Answer" }).click();
+      [scrollWidth, clientWidth] = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+      expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
+    }
+  });
+
+  test("interview mode stays within the max-width container at 1280px and 1440px", async ({ page }) => {
+    for (const width of [1280, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/interview");
+      const mainBox = await page.locator("main").boundingBox();
+      expect(mainBox).not.toBeNull();
+      expect(mainBox!.width).toBeLessThanOrEqual(1153);
+    }
+  });
+
+  test("interview mode has an aria-live region that announces session progress", async ({ page }) => {
+    await page.goto("/interview?category=helm&count=5");
+    const liveRegion = page.locator('[aria-live="polite"]');
+    await expect(liveRegion).toHaveCount(1);
+
+    await page.getByRole("button", { name: "Start Interview" }).click();
+    await expect(liveRegion).toContainText("Interview started");
+  });
+
+  test("interview mode's controls are fully keyboard-operable", async ({ page }) => {
+    await page.goto("/interview?category=helm&count=5");
+    const juniorChip = page.getByRole("button", { name: "Junior DevOps" });
+    await juniorChip.focus();
+    await page.keyboard.press("Enter");
+    await expect(juniorChip).toHaveAttribute("aria-pressed", "true");
+    await page.keyboard.press("Enter");
+    await expect(juniorChip).toHaveAttribute("aria-pressed", "false");
+
+    await page.getByRole("button", { name: "Start Interview" }).focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByText("Question 1 of 5", { exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "Reveal Answer" }).focus();
+    await page.keyboard.press("Enter");
+    await page.getByRole("button", { name: "Nailed it" }).focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByText("Question 2 of 5", { exact: true })).toBeVisible();
+  });
+
+  test("no console errors across the interview mode config, active, and results phases", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+    page.on("pageerror", (e) => errors.push(String(e)));
+
+    await page.goto("/interview?category=helm&count=5");
+    await page.getByRole("button", { name: "Start Interview" }).click();
+    for (let i = 0; i < 5; i++) {
+      await page.getByRole("button", { name: "Reveal Answer" }).click();
+      await page.getByRole("button", { name: "Nailed it" }).click();
+    }
+    expect(errors).toEqual([]);
+  });
+
+  test.describe("Job-Specific Interview", () => {
+    test("full flow: JD + resume text produces a risk-weighted, explainable session through to results", async ({ page }) => {
+      const errors: string[] = [];
+      page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+      page.on("pageerror", (e) => errors.push(String(e)));
+
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+      await page.getByLabel("Job description").fill(GOLDEN_JD);
+      await page.getByLabel(/Your résumé/).fill(GOLDEN_RESUME);
+      await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+
+      await expect(page.getByRole("heading", { name: "Detected JD Requirements" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Interview Risk / Focus Areas" })).toBeVisible();
+
+      const kubernetesCard = page.locator("div").filter({ hasText: /^Kubernetes/ }).filter({ hasText: "High risk" }).first();
+      await expect(kubernetesCard).toBeVisible();
+      await expect(kubernetesCard).toContainText("ECS");
+      const securityCard = page.locator("div").filter({ hasText: /^Security/ }).filter({ hasText: "High risk" }).first();
+      await expect(securityCard).toBeVisible();
+      await expect(securityCard).toContainText("No mention");
+
+      const awsCard = page.locator("div").filter({ hasText: /^AWS/ }).filter({ hasText: "Low risk" }).first();
+      await expect(awsCard).toBeVisible();
+
+      await page.getByRole("button", { name: "Build My Interview" }).click();
+      await expect(page.locator("p").filter({ hasText: /^Question 1 of \d+$/ })).toBeVisible();
+      await expect(page.getByText(/^Selected (because|to validate)/)).toBeVisible();
+      expect(page.url()).toMatch(/\/interview$/);
+
+      let questionCount = 0;
+      while (true) {
+        await page.getByRole("button", { name: "Reveal Answer" }).click();
+        await page.getByRole("button", { name: "Nailed it" }).click();
+        questionCount += 1;
+        if (await page.getByText(/points ·/).isVisible().catch(() => false)) break;
+        if (questionCount > 25) throw new Error("Job-specific session did not reach results");
+      }
+
+      await expect(page.getByText(/points ·/)).toBeVisible();
+      await expect(page.getByRole("heading", { name: "JD Fit" })).toBeVisible();
+      await expect(page.getByText(/Gap areas: \d+ of \d+ nailed/)).toBeVisible();
+
+      expect(errors).toEqual([]);
+    });
+
+    test("editable extraction: a detected requirement can be removed and a new one added before building", async ({ page }) => {
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+      await page.getByLabel("Job description").fill("Kubernetes and Terraform required.");
+      await page.getByLabel(/Your résumé/).fill("Some Terraform experience.");
+      await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+
+      await expect(page.getByRole("button", { name: "Remove Kubernetes from JD requirements" })).toBeVisible();
+      await page.getByRole("button", { name: "Remove Kubernetes from JD requirements" }).click();
+      await expect(page.getByRole("button", { name: "Remove Kubernetes from JD requirements" })).toHaveCount(0);
+
+      await page.getByLabel("Add a JD requirement").selectOption("security");
+      await page.getByRole("button", { name: "Add" }).first().click();
+      await expect(page.getByRole("button", { name: "Remove Security from JD requirements" })).toBeVisible();
+    });
+
+    test("zero/low-match: an empty resume marks every JD requirement absent and high risk", async ({ page }) => {
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+      await page.getByLabel("Job description").fill(GOLDEN_JD);
+      await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+
+      const riskBadges = page.getByText("High risk");
+      await expect(riskBadges).toHaveCount(5);
+      await expect(page.getByText("Low risk")).toHaveCount(0);
+    });
+
+    test("coverage limitation is explained when there are more JD requirements than the session can fit", async ({ page }) => {
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+      await page
+        .getByLabel("Job description")
+        .fill("Must have: AWS, Kubernetes, Terraform, GitHub Actions, Security, Docker, Ansible, Prometheus.");
+      await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+      const fiveChip = page.getByRole("button", { name: "5", exact: true });
+      await fiveChip.click();
+
+      await expect(page.getByText(/couldn't fit in a 5-question session/)).toBeVisible();
+    });
+
+    test("uploading a .pdf JD and a .docx resume extracts real text into the fields", async ({ page }) => {
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+
+      const jdFileInput = page.locator('input[type="file"]').first();
+      await jdFileInput.setInputFiles(path.join(FIXTURES_DIR, "jd.pdf"));
+      await expect(page.getByLabel("Job description")).toHaveValue(/Kubernetes/, { timeout: 15_000 });
+
+      const resumeFileInput = page.locator('input[type="file"]').nth(1);
+      await resumeFileInput.setInputFiles(path.join(FIXTURES_DIR, "resume.docx"));
+      await expect(page.getByLabel(/Your résumé/)).toHaveValue(/Terraform/, { timeout: 15_000 });
+    });
+
+    test("a file over the size limit is rejected with a clear error and never sent anywhere", async ({ page }) => {
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+
+      await page.evaluate(() => {
+        const input = document.querySelectorAll('input[type="file"]')[0] as HTMLInputElement;
+        const bigFile = new File([new Uint8Array(6 * 1024 * 1024)], "huge.txt", { type: "text/plain" });
+        const dt = new DataTransfer();
+        dt.items.add(bigFile);
+        input.files = dt.files;
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      await expect(page.getByText(/the limit is 5 MB/)).toBeVisible();
+    });
+
+    test("Clear My Data removes the saved JD/résumé profile from localStorage", async ({ page }) => {
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+      await page.getByLabel("Job description").fill(GOLDEN_JD);
+      await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+
+      const stored = await page.evaluate(() => localStorage.getItem("job-specific-profile"));
+      expect(stored).toBeTruthy();
+
+      await page.getByRole("button", { name: "Clear My Data" }).click();
+      const cleared = await page.evaluate(() => localStorage.getItem("job-specific-profile"));
+      expect(cleared).toBeNull();
+      await expect(page.getByLabel("Job description")).toHaveValue("");
+    });
+
+    test("recently-answered questions are less likely to repeat when rebuilding from the same JD/résumé", async ({ page }) => {
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+      await page.getByLabel("Job description").fill("Kubernetes required.");
+      await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+      await page.getByRole("button", { name: "5", exact: true }).click();
+      await page.getByRole("button", { name: "Build My Interview" }).click();
+
+      const firstIds: string[] = [];
+      for (let i = 0; i < 5 && (await page.getByRole("button", { name: "Reveal Answer" }).isVisible().catch(() => false)); i++) {
+        const url = await page.evaluate(() => JSON.parse(localStorage.getItem("interview-active-session") ?? "{}").questionIds ?? []);
+        firstIds.push(...url);
+        await page.getByRole("button", { name: "Reveal Answer" }).click();
+        await page.getByRole("button", { name: "Nailed it" }).click();
+      }
+      await expect(page.getByRole("heading", { name: "JD Fit" })).toBeVisible();
+
+      await page.getByRole("button", { name: "Rebuild From Same JD / Resume" }).click();
+      await page.getByRole("button", { name: "Build My Interview" }).click();
+      await expect(page.locator("p").filter({ hasText: /^Question 1 of \d+$/ })).toBeVisible();
+      const secondSession = await page.evaluate(() => JSON.parse(localStorage.getItem("interview-active-session") ?? "{}"));
+      expect(Array.isArray(secondSession.questionIds)).toBe(true);
+      expect(secondSession.questionIds.length).toBeGreaterThan(0);
+    });
+
+    test("Job-Specific Interview's controls are fully keyboard-operable", async ({ page }) => {
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).focus();
+      await page.keyboard.press("Enter");
+      await expect(page.getByLabel("Job description")).toBeVisible();
+
+      await page.getByLabel("Job description").fill(GOLDEN_JD);
+      await page.getByLabel(/Your résumé/).fill(GOLDEN_RESUME);
+      await page.getByRole("button", { name: "Review Extracted Skills" }).focus();
+      await page.keyboard.press("Enter");
+      await expect(page.getByRole("heading", { name: "Interview Risk / Focus Areas" })).toBeVisible();
+
+      await page.getByRole("button", { name: "Build My Interview" }).focus();
+      await page.keyboard.press("Enter");
+      await expect(page.locator("p").filter({ hasText: /^Question 1 of \d+$/ })).toBeVisible();
+    });
+
+    for (const width of [375, 390, 412]) {
+      test(`Job-Specific Interview renders correctly at ${width}px with no horizontal overflow`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 800 });
+        await page.goto("/interview");
+        await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+        await page.getByLabel("Job description").fill(GOLDEN_JD);
+        await page.getByLabel(/Your résumé/).fill(GOLDEN_RESUME);
+        await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+        await expect(page.getByRole("heading", { name: "Interview Risk / Focus Areas" })).toBeVisible();
+
+        const [scrollWidth, clientWidth] = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+        expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
+      });
+    }
+
+    test("no console errors across the Job-Specific config, review, active, and results phases", async ({ page }) => {
+      const errors: string[] = [];
+      page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+      page.on("pageerror", (e) => errors.push(String(e)));
+
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+      await page.getByLabel("Job description").fill(GOLDEN_JD);
+      await page.getByLabel(/Your résumé/).fill(GOLDEN_RESUME);
+      await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+      await page.getByRole("button", { name: "Build My Interview" }).click();
+      for (let i = 0; i < 5 && (await page.getByRole("button", { name: "Reveal Answer" }).isVisible().catch(() => false)); i++) {
+        await page.getByRole("button", { name: "Reveal Answer" }).click();
+        await page.getByRole("button", { name: "Nailed it" }).click();
+      }
+      expect(errors).toEqual([]);
+    });
+  });
+
+  test("existing General Interview mode is unaffected by the Job-Specific tab: config filters, start, and session flow still work", async ({ page }) => {
+    await page.goto("/interview?category=helm&count=5");
+    await expect(page.getByRole("button", { name: "General Interview" })).toBeVisible();
+    await page.getByRole("button", { name: "Start Interview" }).click();
+    await expect(page.getByText("Question 1 of 5", { exact: true })).toBeVisible();
   });
 
   test("guides landing page loads and links to all six guides", async ({ page }) => {
@@ -1791,7 +2223,7 @@ test.describe("DevOps Interview Knowledge Base", () => {
     page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
     page.on("pageerror", (e) => errors.push(String(e)));
 
-    for (const path of ["/", "/aws", SAMPLE_QUESTION_PATH, "/search", "/technologies/kubernetes", "/difficulty/advanced", "/practice", "/contact", "/guides", "/guides/kubernetes-interview-guide", "/guides/devops-interview-guide", "/roadmaps", "/roadmaps/devops-engineer-roadmap"]) {
+    for (const path of ["/", "/aws", SAMPLE_QUESTION_PATH, "/search", "/technologies/kubernetes", "/difficulty/advanced", "/interview", "/contact", "/guides", "/guides/kubernetes-interview-guide", "/guides/devops-interview-guide", "/roadmaps", "/roadmaps/devops-engineer-roadmap"]) {
       await page.goto(path, { waitUntil: "networkidle" });
     }
     expect(errors).toEqual([]);

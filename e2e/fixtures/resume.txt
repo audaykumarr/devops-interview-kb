@@ -1,0 +1,1 @@
+Experience with AWS and ECS for container workloads. Built and maintained Terraform modules for three years. Automated deployments using GitHub Actions.
