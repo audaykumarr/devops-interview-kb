@@ -183,6 +183,10 @@ function getFollowUpLinks(sourceId: string): FollowUpLink[] {
   return loadFollowUpLinks().filter((l) => l.source_id === sourceId);
 }
 
+export function getAllFollowUpLinks(): FollowUpLink[] {
+  return loadFollowUpLinks();
+}
+
 /**
  * Loads a question's full detail for its page: resolves curated
  * related_questions to real entries, and — only if fewer than 3 are

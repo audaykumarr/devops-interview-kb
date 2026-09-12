@@ -3,16 +3,17 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AdaptiveInterviewClient } from "./AdaptiveInterviewClient";
 import { DifficultyBadge, TypeBadge } from "./Badge";
 import { JobReadinessPanel } from "./JobReadinessPanel";
 import { JobSpecificSetup } from "./JobSpecificSetup";
 import { MarkdownSection } from "./MarkdownSection";
 import { PRACTICE_PROGRESS_STORAGE_KEY, loadPracticeProgress } from "@/lib/roadmap-progress";
 import { labelize } from "@/lib/format";
-import { buildRequirementAssessments, type JobSpecificBuildResult } from "@/lib/job-match";
+import { buildRequirementAssessments, type JobSpecificBuildResult, type RequirementAssessment, type ResumeSkill } from "@/lib/job-match";
 import { appendJobSessionRecord, loadJobSessionRecordsForFingerprint } from "@/lib/job-readiness-storage";
 import { loadJobProfile } from "@/lib/job-session-storage";
-import type { TaxonomyCategory } from "@/lib/questions";
+import type { FollowUpLink, TaxonomyCategory } from "@/lib/questions";
 import {
   DEFAULT_INTERVIEW_CONFIG,
   DIFFICULTY_ORDER,
@@ -98,16 +99,27 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
   );
 }
 
+interface AdaptiveLaunch {
+  buildResult: JobSpecificBuildResult;
+  assessments: RequirementAssessment[];
+  resumeSkills: ResumeSkill[];
+  count: InterviewQuestionCount;
+  timeMode: TimeMode;
+  jdFingerprint: string;
+}
+
 export function InterviewClient({
   pool,
   categories,
   levels,
   types,
+  followUpLinks,
 }: {
   pool: InterviewQuestionEntry[];
   categories: TaxonomyCategory[];
   levels: { slug: string; label: string }[];
   types: string[];
+  followUpLinks: FollowUpLink[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -122,6 +134,7 @@ export function InterviewClient({
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [announcement, setAnnouncement] = useState("");
   const [resumable, setResumable] = useState<ActiveInterviewSession | null>(null);
+  const [adaptiveLaunch, setAdaptiveLaunch] = useState<AdaptiveLaunch | null>(null);
   const restoredRef = useRef(false);
 
   // Detect a session left in progress (from a reload, or from navigating away and back) exactly
@@ -202,6 +215,17 @@ export function InterviewClient({
     setResumable(null);
     setAnnouncement(`Interview started. Question 1 of ${result.questionIds.length}.`);
     setPhase("active");
+  }
+
+  function startAdaptiveInterview(
+    buildResultArg: JobSpecificBuildResult,
+    assessmentsArg: RequirementAssessment[],
+    resumeSkillsArg: ResumeSkill[],
+    count: InterviewQuestionCount,
+    timeMode: TimeMode,
+    jdFingerprint: string,
+  ) {
+    setAdaptiveLaunch({ buildResult: buildResultArg, assessments: assessmentsArg, resumeSkills: resumeSkillsArg, count, timeMode, jdFingerprint });
   }
 
   const sessionQuestions = useMemo(() => {
@@ -289,6 +313,21 @@ export function InterviewClient({
   const budgetSeconds = config.count * SECONDS_PER_QUESTION_BUDGET;
   const remaining = budgetSeconds - elapsedSeconds;
 
+  if (adaptiveLaunch) {
+    return (
+      <AdaptiveInterviewClient
+        pool={pool}
+        followUpLinks={followUpLinks}
+        buildResult={adaptiveLaunch.buildResult}
+        assessments={adaptiveLaunch.assessments}
+        resumeSkills={adaptiveLaunch.resumeSkills}
+        jdFingerprint={adaptiveLaunch.jdFingerprint}
+        config={{ ...DEFAULT_INTERVIEW_CONFIG, count: adaptiveLaunch.count, timeMode: adaptiveLaunch.timeMode }}
+        onExit={() => setAdaptiveLaunch(null)}
+      />
+    );
+  }
+
   return (
     <div>
       <div aria-live="polite" className="sr-only">
@@ -336,7 +375,9 @@ export function InterviewClient({
             </div>
           )}
 
-          {mode === "job-specific" && <JobSpecificSetup pool={pool} recentlySeenIds={recentlySeenIds} onBuild={startJobSpecificSession} />}
+          {mode === "job-specific" && (
+            <JobSpecificSetup pool={pool} recentlySeenIds={recentlySeenIds} onBuild={startJobSpecificSession} onStartAdaptive={startAdaptiveInterview} />
+          )}
 
           {mode === "general" && (
           <>

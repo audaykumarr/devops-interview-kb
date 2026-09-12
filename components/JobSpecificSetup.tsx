@@ -20,10 +20,12 @@ import {
   type EvidenceSource,
   type JDRequirement,
   type JobSpecificBuildResult,
+  type RequirementAssessment,
   type ResumeSkill,
 } from "@/lib/job-match";
 import { computeJdFingerprint } from "@/lib/job-readiness";
 import { clearJobSessionHistory, loadJobSessionRecordsForFingerprint } from "@/lib/job-readiness-storage";
+import { clearAllAdaptiveData } from "@/lib/adaptive-session-storage";
 import { clearJobProfile, loadJobProfile, saveJobProfile } from "@/lib/job-session-storage";
 import { extractTextFromFile, MAX_FILE_SIZE_BYTES } from "@/lib/resume-extraction";
 import { CANONICAL_TAGS, isCanonicalTag, type TechTag } from "@/lib/tech-taxonomy";
@@ -167,10 +169,19 @@ export function JobSpecificSetup({
   pool,
   recentlySeenIds,
   onBuild,
+  onStartAdaptive,
 }: {
   pool: InterviewQuestionEntry[];
   recentlySeenIds: ReadonlySet<string>;
   onBuild: (result: JobSpecificBuildResult, count: InterviewQuestionCount, timeMode: TimeMode, jdFingerprint: string) => void;
+  onStartAdaptive: (
+    result: JobSpecificBuildResult,
+    assessments: RequirementAssessment[],
+    resumeSkills: ResumeSkill[],
+    count: InterviewQuestionCount,
+    timeMode: TimeMode,
+    jdFingerprint: string,
+  ) => void;
 }) {
   const savedProfile = useRef(loadJobProfile()).current;
   const [step, setStep] = useState<"input" | "review">(savedProfile ? "review" : "input");
@@ -231,6 +242,7 @@ export function JobSpecificSetup({
   function handleClearData() {
     clearJobProfile();
     clearJobSessionHistory();
+    clearAllAdaptiveData();
     setJdText("");
     setResumeText("");
     setRequirements([]);
@@ -242,6 +254,11 @@ export function JobSpecificSetup({
   function buildInterview() {
     const result = buildJobSpecificSession(pool, assessments, resumeSkills, count, recentlySeenIds);
     onBuild(result, count, timeMode, jdFingerprint);
+  }
+
+  function startAdaptiveInterview() {
+    const result = buildJobSpecificSession(pool, assessments, resumeSkills, count, recentlySeenIds);
+    onStartAdaptive(result, assessments, resumeSkills, count, timeMode, jdFingerprint);
   }
 
   const requirementTags = new Set(requirements.map((r) => r.tag));
@@ -458,6 +475,14 @@ export function JobSpecificSetup({
             className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Build My Interview
+          </button>
+          <button
+            type="button"
+            onClick={startAdaptiveInterview}
+            disabled={preview.questionIds.length === 0}
+            className="rounded-md border border-violet-400 bg-violet-50 px-4 py-2 text-sm font-medium text-violet-800 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-700 dark:bg-violet-950 dark:text-violet-300 dark:hover:bg-violet-900"
+          >
+            Start Adaptive AI Interview <span className="font-normal">(Beta)</span>
           </button>
           <button type="button" onClick={handleClearData} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
             Clear My Data

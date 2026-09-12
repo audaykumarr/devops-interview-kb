@@ -4,7 +4,7 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { InterviewClient } from "@/components/InterviewClient";
 import { JsonLd } from "@/components/JsonLd";
 import { buildInterviewPool } from "@/lib/interview-session";
-import { getAllQuestions, getCategoriesWithCounts, getPracticeSet } from "@/lib/questions";
+import { getAllFollowUpLinks, getAllQuestions, getCategoriesWithCounts, getPracticeSet } from "@/lib/questions";
 import { buildMetadata } from "@/lib/seo";
 import { breadcrumbJsonLd } from "@/lib/structured-data";
 import { INTERVIEW_LEVELS, INTERVIEW_LEVEL_LABELS } from "@/scripts/lib/interview-level";
@@ -20,6 +20,7 @@ export default function InterviewPage() {
   const pool = buildInterviewPool(getAllQuestions(), getPracticeSet());
   const categories = getCategoriesWithCounts().filter((c) => c.count > 0);
   const levels = INTERVIEW_LEVELS.map((level) => ({ slug: level, label: INTERVIEW_LEVEL_LABELS[level] }));
+  const followUpLinks = getAllFollowUpLinks();
 
   return (
     <div>
@@ -29,7 +30,7 @@ export default function InterviewPage() {
 
       <div className="mt-6">
         <Suspense fallback={null}>
-          <InterviewClient pool={pool} categories={categories} levels={levels} types={[...INDEXABLE_QUESTION_TYPES]} />
+          <InterviewClient pool={pool} categories={categories} levels={levels} types={[...INDEXABLE_QUESTION_TYPES]} followUpLinks={followUpLinks} />
         </Suspense>
       </div>
     </div>

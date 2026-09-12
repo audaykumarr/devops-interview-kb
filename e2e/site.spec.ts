@@ -1187,6 +1187,209 @@ test.describe("DevOps Interview Knowledge Base", () => {
     }
   });
 
+  test.describe("Adaptive AI Interviewer", () => {
+    const SIMULATE_EVALUATOR_UNAVAILABLE = "__simulate_evaluator_unavailable__";
+
+    async function startAdaptive(page: import("@playwright/test").Page, jd: string, resume: string, count?: "5" | "10" | "15" | "20") {
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+      await page.getByLabel("Job description").fill(jd);
+      if (resume) await page.getByLabel(/Your resume/).fill(resume);
+      await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+      if (count) await page.getByRole("button", { name: count, exact: true }).click();
+      await expect(page.getByRole("button", { name: "Build My Interview" })).toBeVisible();
+      await page.getByRole("button", { name: /Start Adaptive AI Interview/ }).click();
+    }
+
+    test("starting: launches from the Job-Specific review screen, clearly labeled, without removing the deterministic path", async ({ page }) => {
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+      await page.getByLabel("Job description").fill("Kubernetes required.");
+      await page.getByLabel(/Your resume/).fill("Managed production Kubernetes clusters.");
+      await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+
+      await expect(page.getByRole("button", { name: "Build My Interview" })).toBeVisible();
+      await expect(page.getByRole("button", { name: /Start Adaptive AI Interview/ })).toBeVisible();
+
+      await page.getByRole("button", { name: /Start Adaptive AI Interview/ }).click();
+
+      await expect(page.getByText(/Adaptive AI Interviewer/)).toBeVisible();
+      await expect(page.getByText(/\(Beta\)/)).toBeVisible();
+      await expect(page.getByText("KB Question", { exact: true })).toBeVisible();
+      await expect(page.getByText(/Question 1 of \d+/)).toBeVisible();
+      await expect(page.getByLabel("Your answer")).toBeVisible();
+    });
+
+    test("answer entry: shows a live remaining-character count and blocks empty submission", async ({ page }) => {
+      await startAdaptive(page, "Kubernetes required.", "Managed production Kubernetes clusters.");
+      await expect(page.getByText("2000 characters remaining")).toBeVisible();
+      const submit = page.getByRole("button", { name: "Submit Answer" });
+      await expect(submit).toBeDisabled();
+
+      await page.getByLabel("Your answer").fill("Hello there");
+      await expect(page.getByText("1989 characters remaining")).toBeVisible();
+      await expect(submit).toBeEnabled();
+    });
+
+    test("fake evaluation: an AI Evaluation is shown and stays visible before the candidate advances", async ({ page }) => {
+      await startAdaptive(page, "Kubernetes required.", "Managed production Kubernetes clusters.");
+      await page.getByLabel("Your answer").fill("a".repeat(80));
+      await page.getByRole("button", { name: "Submit Answer" }).click();
+
+      await expect(page.getByText("AI Evaluation", { exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: /Next Question|See Results/ })).toBeVisible();
+    });
+
+    test("follow-up flow: a non-nailed answer produces a labeled follow-up (KB or AI), not an immediate move-on", async ({ page }) => {
+      await startAdaptive(page, "Kubernetes required.", "Managed production Kubernetes clusters.");
+      await page.getByLabel("Your answer").fill("a".repeat(20));
+      await page.getByRole("button", { name: "Submit Answer" }).click();
+
+      await expect(page.getByText(/follow-up 1 of 2/)).toBeVisible();
+      await expect(page.getByText("KB Follow-up", { exact: true }).or(page.getByText("AI Follow-up", { exact: true }))).toBeVisible();
+      await expect(page.getByText("AI Evaluation", { exact: true })).toBeVisible();
+    });
+
+    test("max 2 follow-ups: a persistently weak answer is eventually forced to move on", async ({ page }) => {
+      await startAdaptive(page, "Kubernetes required.", "Managed production Kubernetes clusters.", "5");
+      const weakAnswer = "a".repeat(20);
+
+      for (let i = 0; i < 3; i++) {
+        await expect(page.getByLabel("Your answer")).toHaveValue("");
+        await page.getByLabel("Your answer").fill(weakAnswer);
+        await page.getByRole("button", { name: "Submit Answer" }).click();
+      }
+
+      await expect(page.getByRole("button", { name: /Next Question|See Results/ })).toBeVisible();
+      await expect(page.getByText(/follow-up 3 of 2/)).toHaveCount(0);
+    });
+
+    test("skip: 'Skip this follow-up' advances without requiring an answer to the follow-up itself", async ({ page }) => {
+      await startAdaptive(page, "Kubernetes required.", "Managed production Kubernetes clusters.", "5");
+      await page.getByLabel("Your answer").fill("a".repeat(20));
+      await page.getByRole("button", { name: "Submit Answer" }).click();
+
+      await expect(page.getByRole("button", { name: "Skip this follow-up" })).toBeVisible();
+      await page.getByRole("button", { name: "Skip this follow-up" }).click();
+
+      await expect(page.getByText(/Question 2 of \d+/).or(page.getByText("Adaptive interview complete", { exact: true }))).toBeVisible();
+    });
+
+    test("fallback: an unavailable evaluator falls back to Reveal Answer + self-assessment, and the candidate can still finish", async ({ page }) => {
+      await startAdaptive(page, "Kubernetes required.", "Managed production Kubernetes clusters.", "5");
+      await page.getByLabel("Your answer").fill(SIMULATE_EVALUATOR_UNAVAILABLE);
+      await page.getByRole("button", { name: "Submit Answer" }).click();
+
+      await expect(page.getByText(/AI evaluator is unavailable/)).toBeVisible();
+      await page.getByRole("button", { name: "Reveal Answer" }).click();
+
+      await expect(page.getByRole("button", { name: "Nailed it" })).toBeVisible();
+      await page.getByRole("button", { name: "Nailed it" }).click();
+
+      await expect(page.getByText(/Question 2 of \d+/).or(page.getByText("Adaptive interview complete", { exact: true }))).toBeVisible();
+    });
+
+    test("session resume: an in-progress session can be resumed after a reload", async ({ page }) => {
+      await startAdaptive(page, "AWS, Kubernetes, Terraform, GitHub Actions, and Security experience required.", "Experience with AWS and ECS for container workloads.", "5");
+      await expect(page.getByText(/Question 1 of \d+/)).toBeVisible();
+
+      await page.getByLabel("Your answer").fill("a".repeat(80));
+      await page.getByRole("button", { name: "Submit Answer" }).click();
+      await page.getByRole("button", { name: /Next Question|See Results/ }).click();
+      await expect(page.getByText(/Question 2 of \d+/)).toBeVisible();
+
+      await page.reload();
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+      await page.getByRole("button", { name: /Start Adaptive AI Interview/ }).click();
+
+      await expect(page.getByText(/in progress — question 2 of \d+/)).toBeVisible();
+      await page.getByRole("button", { name: "Resume Adaptive Interview" }).click();
+      await expect(page.getByText(/Question 2 of \d+/)).toBeVisible();
+    });
+
+    test("completion: finishing every canonical question reaches results with Job Readiness and AI Interview Notes", async ({ page }) => {
+      await startAdaptive(page, "Kubernetes required.", "Managed production Kubernetes clusters.", "5");
+
+      const complete = page.getByText("Adaptive interview complete", { exact: true });
+      let guard = 0;
+      while (guard < 20 && !(await complete.isVisible().catch(() => false))) {
+        await expect(page.getByLabel("Your answer")).toBeVisible();
+        await page.getByLabel("Your answer").fill("a".repeat(80));
+        await page.getByRole("button", { name: "Submit Answer" }).click();
+        const nextButton = page.getByRole("button", { name: /Next Question|See Results/ });
+        await expect(nextButton).toBeVisible();
+        await nextButton.click();
+        await expect(complete.or(page.getByLabel("Your answer"))).toBeVisible();
+        guard++;
+      }
+
+      await expect(complete).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Job Readiness" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "AI Interview Notes" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Back to Job-Specific Interview" })).toBeVisible();
+    });
+
+    test("keyboard: the answer form and advance controls are fully keyboard-operable", async ({ page }) => {
+      await startAdaptive(page, "Kubernetes required.", "Managed production Kubernetes clusters.");
+      await page.getByLabel("Your answer").fill("a".repeat(80));
+      await page.getByRole("button", { name: "Submit Answer" }).focus();
+      await page.keyboard.press("Enter");
+
+      await page.getByRole("button", { name: /Next Question|See Results/ }).focus();
+      await page.keyboard.press("Enter");
+
+      await expect(page.getByText(/Question 2 of \d+/).or(page.getByText("Adaptive interview complete", { exact: true }))).toBeVisible();
+    });
+
+    test("no console errors across the Adaptive AI Interviewer flow", async ({ page }) => {
+      const errors: string[] = [];
+      page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+      page.on("pageerror", (e) => errors.push(String(e)));
+
+      await startAdaptive(page, "Kubernetes required.", "Managed production Kubernetes clusters.");
+      await page.getByLabel("Your answer").fill("a".repeat(20));
+      await page.getByRole("button", { name: "Submit Answer" }).click();
+      await expect(page.getByText(/follow-up 1 of 2/)).toBeVisible();
+      await page.getByRole("button", { name: "Skip this follow-up" }).click();
+
+      expect(errors).toEqual([]);
+    });
+
+    test("privacy: zero network requests leave the browser during a full Adaptive AI Interview session (no LLM call, no /api route)", async ({ page }) => {
+      const externalRequests: string[] = [];
+      page.on("request", (r) => {
+        const url = r.url();
+        if (!url.startsWith("http://localhost") && !url.startsWith("data:")) externalRequests.push(url);
+      });
+      const apiRequests: string[] = [];
+      page.on("request", (r) => {
+        if (new URL(r.url()).pathname.startsWith("/api/")) apiRequests.push(r.url());
+      });
+
+      await startAdaptive(page, "Kubernetes required.", "Managed production Kubernetes clusters.", "5");
+      await page.getByLabel("Your answer").fill("a".repeat(20));
+      await page.getByRole("button", { name: "Submit Answer" }).click();
+      await expect(page.getByText(/follow-up 1 of 2/)).toBeVisible();
+      await page.getByLabel("Your answer").fill("a".repeat(80));
+      await page.getByRole("button", { name: "Submit Answer" }).click();
+      await page.getByRole("button", { name: /Next Question|See Results/ }).click();
+
+      expect(externalRequests).toEqual([]);
+      expect(apiRequests).toEqual([]);
+    });
+
+    for (const width of [375, 390, 412]) {
+      test(`Adaptive AI Interviewer renders correctly at ${width}px with no horizontal overflow`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await startAdaptive(page, "Kubernetes required.", "Managed production Kubernetes clusters.");
+        await expect(page.getByLabel("Your answer")).toBeVisible();
+
+        const [scrollWidth, clientWidth] = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+        expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
+      });
+    }
+  });
+
   test("existing General Interview mode is unaffected by the Job-Specific tab: config filters, start, and session flow still work", async ({ page }) => {
     await page.goto("/interview?category=helm&count=5");
     await expect(page.getByRole("button", { name: "General Interview" })).toBeVisible();
