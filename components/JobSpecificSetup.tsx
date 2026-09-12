@@ -15,6 +15,9 @@ import {
   buildRequirementAssessments,
   extractJDRequirements,
   extractResumeSkills,
+  resumeSkillEvidenceSource,
+  MATCH_RULE_LABEL,
+  type EvidenceSource,
   type JDRequirement,
   type JobSpecificBuildResult,
   type ResumeSkill,
@@ -46,6 +49,66 @@ function RemovableChip({ label, onRemove, removeLabel }: { label: string; onRemo
     <span className={`${CHIP_BASE} ${CHIP_ON}`}>
       {label}
       <button type="button" onClick={onRemove} aria-label={removeLabel} className="rounded-full text-indigo-500 hover:text-indigo-800 dark:text-indigo-300 dark:hover:text-indigo-100">
+        ×
+      </button>
+    </span>
+  );
+}
+
+const EVIDENCE_SOURCE_LABEL: Record<EvidenceSource, string> = { direct: "Direct", inferred: "Inferred", weak: "Weak" };
+const EVIDENCE_SOURCE_CLASS: Record<EvidenceSource, string> = {
+  direct: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
+  inferred: "bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300",
+  weak: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+};
+
+function EvidenceSourceTag({ source }: { source: EvidenceSource }) {
+  return <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${EVIDENCE_SOURCE_CLASS[source]}`}>{EVIDENCE_SOURCE_LABEL[source]}</span>;
+}
+
+function skillChipLabel(skill: ResumeSkill): string {
+  const via = skill.ambiguous && skill.ambiguousSource ? ` (via ${skill.ambiguousSource})` : "";
+  return `${labelize(skill.tag)}${via}`;
+}
+
+function SkillChip({
+  skill,
+  isOpen,
+  detailId,
+  onToggleDetail,
+  onRemove,
+}: {
+  skill: ResumeSkill;
+  isOpen: boolean;
+  detailId: string;
+  onToggleDetail: () => void;
+  onRemove: () => void;
+}) {
+  const source = resumeSkillEvidenceSource(skill);
+  const label = skillChipLabel(skill);
+  return (
+    <span className={`${CHIP_BASE} ${CHIP_ON}`}>
+      {label}
+      {skill.isClaim ? " ★" : ""}
+      <EvidenceSourceTag source={source} />
+      {source !== "direct" && (
+        <button
+          type="button"
+          onClick={onToggleDetail}
+          aria-expanded={isOpen}
+          aria-controls={detailId}
+          aria-label={`${isOpen ? "Hide" : "Show"} why ${label} is marked ${EVIDENCE_SOURCE_LABEL[source]}`}
+          className="rounded-full border border-indigo-300 px-1.5 text-[11px] leading-4 text-indigo-600 hover:bg-indigo-100 dark:border-indigo-700 dark:text-indigo-300 dark:hover:bg-indigo-900"
+        >
+          ⓘ
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={`Remove ${labelize(skill.tag)} from resume skills`}
+        className="rounded-full text-indigo-500 hover:text-indigo-800 dark:text-indigo-300 dark:hover:text-indigo-100"
+      >
         ×
       </button>
     </span>
@@ -120,6 +183,7 @@ export function JobSpecificSetup({
   const [jdFileState, setJdFileState] = useState<{ busy: boolean; error: string | null }>({ busy: false, error: null });
   const [resumeFileState, setResumeFileState] = useState<{ busy: boolean; error: string | null }>({ busy: false, error: null });
   const [dataCleared, setDataCleared] = useState(false);
+  const [openSkillTag, setOpenSkillTag] = useState<TechTag | null>(null);
 
   useEffect(() => {
     if (step === "review") saveJobProfile({ jdText, resumeText, requirements, resumeSkills });
@@ -295,14 +359,43 @@ export function JobSpecificSetup({
         <div className="mt-2 flex flex-wrap gap-2">
           {resumeSkills.length === 0 && <p className="text-sm text-slate-500 dark:text-slate-400">No skills detected in your resume.</p>}
           {resumeSkills.map((s) => (
-            <RemovableChip
+            <SkillChip
               key={s.tag}
-              label={`${labelize(s.tag)}${s.isClaim ? " ★" : ""}`}
-              removeLabel={`Remove ${labelize(s.tag)} from resume skills`}
-              onRemove={() => setResumeSkills((prev) => prev.filter((x) => x.tag !== s.tag))}
+              skill={s}
+              isOpen={openSkillTag === s.tag}
+              detailId="resume-skill-detail-panel"
+              onToggleDetail={() => setOpenSkillTag((prev) => (prev === s.tag ? null : s.tag))}
+              onRemove={() => {
+                setResumeSkills((prev) => prev.filter((x) => x.tag !== s.tag));
+                setOpenSkillTag((prev) => (prev === s.tag ? null : prev));
+              }}
             />
           ))}
         </div>
+        {openSkillTag &&
+          (() => {
+            const skill = resumeSkills.find((s) => s.tag === openSkillTag);
+            if (!skill) return null;
+            const source = resumeSkillEvidenceSource(skill);
+            return (
+              <div
+                id="resume-skill-detail-panel"
+                role="region"
+                aria-label={`Evidence detail for ${labelize(skill.tag)}`}
+                className="mt-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
+              >
+                <p className="font-medium text-slate-900 dark:text-slate-100">
+                  {skillChipLabel(skill)} — {EVIDENCE_SOURCE_LABEL[source]}
+                </p>
+                <p className="mt-1">Your resume said: {skill.matchedSentence ? `"${skill.matchedSentence}"` : "no exact sentence was captured."}</p>
+                <p className="mt-1">
+                  {source === "inferred"
+                    ? `${skill.ambiguousSource ?? "This mention"} doesn't confirm ${labelize(skill.tag)} specifically — it's an inferred, not a direct, match.`
+                    : "The wording here limits how strong this evidence is — it isn't treated the same as a direct, unhedged mention."}
+                </p>
+              </div>
+            );
+          })()}
         <AddTagControl existingTags={skillTags} label="Add a resume skill" onAdd={(tag) => setResumeSkills((prev) => [...prev, { tag, isClaim: false }])} />
       </div>
 
@@ -318,6 +411,7 @@ export function JobSpecificSetup({
                 <RiskBadge risk={a.risk} />
                 <EvidenceBadge evidence={a.evidence} />
               </div>
+              <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-500">Match: {MATCH_RULE_LABEL[a.matchRule]}</p>
               <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{a.reason}</p>
             </div>
           ))}

@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
+import { titleCasePhrase } from "@/lib/format";
 import { SELF_ASSESSMENT_LABELS, type InterviewQuestionEntry } from "@/lib/interview-session";
 import {
   computeClaimValidationStatuses,
@@ -10,7 +12,7 @@ import {
   type JobSessionRecord,
   type ReadinessBand,
 } from "@/lib/job-readiness";
-import type { RequirementAssessment, ResumeSkill } from "@/lib/job-match";
+import { MATCH_RULE_LABEL, type EvidenceTier, type RequirementAssessment, type ResumeSkill } from "@/lib/job-match";
 
 const BAND_LABEL: Record<ReadinessBand, string> = { low: "Low", developing: "Developing", solid: "Solid", strong: "Strong" };
 const BAND_CLASS: Record<ReadinessBand, string> = {
@@ -19,6 +21,8 @@ const BAND_CLASS: Record<ReadinessBand, string> = {
   solid: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300",
   strong: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
 };
+
+const EVIDENCE_TIER_LABEL: Record<EvidenceTier, string> = { strong: "Strong", adjacent: "Adjacent", absent: "Absent" };
 
 function BandBadge({ band }: { band: ReadinessBand }) {
   return <span className={`rounded-full px-3 py-1 text-sm font-semibold ${BAND_CLASS[band]}`}>{BAND_LABEL[band]} readiness</span>;
@@ -35,7 +39,18 @@ export function JobReadinessPanel({
   records: JobSessionRecord[];
   pool: InterviewQuestionEntry[];
 }) {
+  const [openTags, setOpenTags] = useState<ReadonlySet<string>>(new Set());
+
   if (assessments.length === 0) return null;
+
+  function toggleTag(tag: string) {
+    setOpenTags((prev) => {
+      const next = new Set(prev);
+      if (next.has(tag)) next.delete(tag);
+      else next.add(tag);
+      return next;
+    });
+  }
 
   const readiness = computeJobReadiness(assessments, records);
   const performance = computeRequirementPerformance(assessments, records);
@@ -70,25 +85,60 @@ export function JobReadinessPanel({
         <div className="mt-2 space-y-2">
           {assessments.map((a) => {
             const perf = performanceByTag.get(a.tag);
+            const isOpen = openTags.has(a.tag);
+            const detailId = `requirement-detail-${a.tag}`;
+            const interviewStatus =
+              !perf || !perf.tested
+                ? "Not tested yet"
+                : `${perf.nailed} nailed · ${perf.partial} partial · ${perf.needsWork} needs work${perf.total === 1 ? " (based on 1 question)" : ` (of ${perf.total})`}`;
             return (
-              <div key={a.tag} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white p-3 text-sm dark:border-slate-800 dark:bg-slate-900">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium text-slate-900 dark:text-slate-100">{a.label}</span>
-                  <span
-                    className={
-                      a.evidence === "strong"
-                        ? "rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                        : "rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300"
-                    }
-                  >
-                    {a.evidence === "strong" ? "Resume: strong evidence" : a.evidence === "adjacent" ? "Resume: adjacent evidence" : "Resume: no evidence"}
-                  </span>
+              <div key={a.tag} className="rounded-lg border border-slate-200 bg-white p-3 text-sm dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium text-slate-900 dark:text-slate-100">{a.label}</span>
+                    <span
+                      className={
+                        a.evidence === "strong"
+                          ? "rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                          : "rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                      }
+                    >
+                      {a.evidence === "strong" ? "Resume: strong evidence" : a.evidence === "adjacent" ? "Resume: adjacent evidence" : "Resume: no evidence"}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="text-slate-500 dark:text-slate-400">{interviewStatus}</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleTag(a.tag)}
+                      aria-expanded={isOpen}
+                      aria-controls={detailId}
+                      className="rounded-full border border-slate-300 px-2.5 py-0.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50 dark:border-slate-700 dark:text-indigo-400 dark:hover:bg-indigo-950"
+                    >
+                      {isOpen ? "Hide" : "Why?"}
+                    </button>
+                  </div>
                 </div>
-                <span className="text-slate-500 dark:text-slate-400">
-                  {!perf || !perf.tested
-                    ? "Not tested yet"
-                    : `${perf.nailed} nailed · ${perf.partial} partial · ${perf.needsWork} needs work${perf.total === 1 ? " (based on 1 question)" : ` (of ${perf.total})`}`}
-                </span>
+                {isOpen && (
+                  <div id={detailId} className="mt-3 space-y-1.5 border-t border-dashed border-slate-200 pt-3 text-slate-600 dark:border-slate-700 dark:text-slate-400">
+                    <p>
+                      <span className="font-medium text-slate-900 dark:text-slate-100">JD asked for:</span> {titleCasePhrase(a.sourcePhrase ?? a.label)}
+                    </p>
+                    <p>
+                      <span className="font-medium text-slate-900 dark:text-slate-100">Resume evidence:</span>{" "}
+                      {a.matchedSentence ? `"${a.matchedSentence}"` : "No mention found"}
+                    </p>
+                    <p>
+                      <span className="font-medium text-slate-900 dark:text-slate-100">Match:</span> {MATCH_RULE_LABEL[a.matchRule]}
+                    </p>
+                    <p>
+                      <span className="font-medium text-slate-900 dark:text-slate-100">Evidence:</span> {EVIDENCE_TIER_LABEL[a.evidence]}
+                    </p>
+                    <p>
+                      <span className="font-medium text-slate-900 dark:text-slate-100">Interview:</span> {interviewStatus}
+                    </p>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -101,16 +151,16 @@ export function JobReadinessPanel({
           <div className="mt-2 space-y-2">
             {claims.map((c) => (
               <div key={c.tag} className="rounded-lg border border-slate-200 bg-white p-3 text-sm dark:border-slate-800 dark:bg-slate-900">
-                <p className="text-slate-600 dark:text-slate-400">
-                  <span className="font-medium text-slate-900 dark:text-slate-100">{c.label}</span> — resume evidence: &quot;{c.claimPhrase}&quot;
+                <p className="font-medium text-slate-900 dark:text-slate-100">{c.label}</p>
+                <p className="mt-1 text-slate-600 dark:text-slate-400">
+                  <span className="font-medium text-slate-900 dark:text-slate-100">Resume claim:</span> &quot;{c.claimPhrase}&quot;
                 </p>
                 <p className="mt-1">
+                  <span className="font-medium text-slate-900 dark:text-slate-100">Interview evidence:</span>{" "}
                   {c.status === "not-yet-validated" ? (
                     <span className="font-medium text-amber-700 dark:text-amber-400">Not yet validated — run a Job-Specific session to test this claim.</span>
                   ) : (
-                    <span className="font-medium text-slate-700 dark:text-slate-300">
-                      Interview evidence: {SELF_ASSESSMENT_LABELS[c.outcome!]} (self-assessed, not verified)
-                    </span>
+                    <span className="font-medium text-slate-700 dark:text-slate-300">{SELF_ASSESSMENT_LABELS[c.outcome!]} (self-assessed, not verified)</span>
                   )}
                 </p>
               </div>

@@ -14,7 +14,7 @@ import type { AnsweredQuestion, InterviewQuestionEntry, JobMatchExplanation, Sel
 import type { TechTag } from "../../lib/tech-taxonomy";
 
 function assessment(overrides: Partial<RequirementAssessment> = {}): RequirementAssessment {
-  return { tag: "aws", label: "AWS", mustHave: true, evidence: "strong", risk: "low", reason: "reason", ...overrides };
+  return { tag: "aws", label: "AWS", mustHave: true, evidence: "strong", risk: "low", reason: "reason", matchRule: "direct", ...overrides };
 }
 
 function answer(id: string, assess: SelfAssessment): AnsweredQuestion {

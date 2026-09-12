@@ -28,6 +28,14 @@ export function formatMinutes(minutes: number): string {
   return `${minutes} min`;
 }
 
+export function titleCasePhrase(phrase: string): string {
+  return phrase
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => ACRONYMS[word] ?? word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 /** Strips common Markdown syntax down to plain text, for JSON-LD/meta description use. */
 export function stripMarkdown(md: string): string {
   return md

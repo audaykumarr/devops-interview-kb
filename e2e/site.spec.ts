@@ -860,6 +860,75 @@ test.describe("DevOps Interview Knowledge Base", () => {
       }
       expect(errors).toEqual([]);
     });
+
+    test("Evidence Transparency: Detected Resume Skills chips show Direct, Inferred, and Weak by default", async ({ page }) => {
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+      await page.getByLabel("Job description").fill("Kubernetes and container orchestration required.");
+      await page.getByLabel(/Your resume/).fill("Managed production Kubernetes clusters. Built workloads using AWS Fargate. Familiar with Terraform.");
+      await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+
+      await expect(page.getByRole("heading", { name: "Detected Resume Skills" })).toBeVisible();
+      await expect(page.getByText("Direct", { exact: true }).first()).toBeVisible();
+      await expect(page.getByText("Inferred", { exact: true }).first()).toBeVisible();
+      await expect(page.getByText("Weak", { exact: true }).first()).toBeVisible();
+    });
+
+    test("Evidence Transparency: an ambiguous resume skill names its source in the chip and its detail panel shows the verbatim sentence", async ({ page }) => {
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+      await page.getByLabel("Job description").fill("ECS required.");
+      await page.getByLabel(/Your resume/).fill("Built and operated container workloads using AWS Fargate.");
+      await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+
+      await expect(page.getByText("ECS (via Fargate)").first()).toBeVisible();
+
+      const infoButton = page.getByRole("button", { name: /why ECS \(via Fargate\) is marked Inferred/ });
+      await expect(infoButton).toHaveAttribute("aria-expanded", "false");
+      await infoButton.click();
+      await expect(infoButton).toHaveAttribute("aria-expanded", "true");
+
+      const panel = page.locator("#resume-skill-detail-panel");
+      await expect(panel).toBeVisible();
+      await expect(panel).toContainText("Built and operated container workloads using AWS Fargate.");
+      await expect(panel).toContainText("doesn't confirm ECS specifically");
+    });
+
+    test("Evidence Transparency: the resume skill evidence-source toggle is keyboard-operable", async ({ page }) => {
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+      await page.getByLabel("Job description").fill("ECS required.");
+      await page.getByLabel(/Your resume/).fill("Built and operated container workloads using AWS Fargate.");
+      await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+
+      const infoButton = page.getByRole("button", { name: /why ECS \(via Fargate\) is marked Inferred/ });
+      await infoButton.focus();
+      await page.keyboard.press("Enter");
+      await expect(infoButton).toHaveAttribute("aria-expanded", "true");
+      await expect(page.locator("#resume-skill-detail-panel")).toBeVisible();
+    });
+
+    test("Evidence Transparency: a Direct chip has no disclosure control — there's nothing to disclose", async ({ page }) => {
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+      await page.getByLabel("Job description").fill("Kubernetes required.");
+      await page.getByLabel(/Your resume/).fill("Managed production Kubernetes clusters.");
+      await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+
+      await expect(page.getByText("Direct", { exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: /Show why Kubernetes is marked/ })).toHaveCount(0);
+    });
+
+    test("Evidence Transparency: the active-interview explanation line uses the same inferred/ambiguous vocabulary as the review screen", async ({ page }) => {
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+      await page.getByLabel("Job description").fill("ECS required.");
+      await page.getByLabel(/Your resume/).fill("Built and operated container workloads using AWS Fargate.");
+      await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+      await page.getByRole("button", { name: "Build My Interview" }).click();
+
+      await expect(page.getByText(/inferred\/ambiguous signal/i)).toBeVisible();
+    });
   });
 
   test.describe("Job Readiness", () => {
@@ -1044,6 +1113,78 @@ test.describe("DevOps Interview Knowledge Base", () => {
 
       expect(errors).toEqual([]);
     });
+
+    test("Evidence Transparency: By Requirement 'Why?' reveals JD phrase, verbatim resume evidence, match, evidence tier, and interview status in order", async ({ page }) => {
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+      await page.getByLabel("Job description").fill("Kubernetes required.");
+      await page.getByLabel(/Your resume/).fill("Managed production Kubernetes clusters.");
+      await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+
+      await expect(page.getByRole("heading", { name: "By Requirement" })).toBeVisible();
+      const whyButton = page.locator('button[aria-controls="requirement-detail-kubernetes"]');
+      await expect(whyButton).toHaveAttribute("aria-expanded", "false");
+      await whyButton.click();
+      await expect(whyButton).toHaveAttribute("aria-expanded", "true");
+
+      const detail = page.locator("#requirement-detail-kubernetes");
+      await expect(detail.getByText(/JD asked for:\s*Kubernetes/)).toBeVisible();
+      await expect(detail.getByText(/Resume evidence:\s*"Managed production Kubernetes clusters\."/)).toBeVisible();
+      await expect(detail.getByText(/Match:\s*Direct technology match/)).toBeVisible();
+      await expect(detail.getByText(/Evidence:\s*Strong/)).toBeVisible();
+    });
+
+    test("Evidence Transparency: a JD requirement with no resume evidence shows 'No mention found', not a blank field", async ({ page }) => {
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+      await page.getByLabel("Job description").fill("Security required.");
+      await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+
+      await page.locator('button[aria-controls="requirement-detail-security"]').click();
+      const detail = page.locator("#requirement-detail-security");
+      await expect(detail.getByText(/Resume evidence:\s*No mention found/)).toBeVisible();
+      await expect(detail.getByText(/Match:\s*No match found/)).toBeVisible();
+    });
+
+    test("Evidence Transparency: a capability-derived requirement shows the capability phrase, not a bare tag name, as what the JD asked for", async ({ page }) => {
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+      await page.getByLabel("Job description").fill("Container orchestration experience required.");
+      await page.getByLabel(/Your resume/).fill("Managed production Kubernetes clusters.");
+      await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+
+      await page.getByRole("button", { name: "Why?" }).click();
+      await expect(page.getByText(/JD asked for:\s*Container Orchestration/)).toBeVisible();
+    });
+
+    test("Evidence Transparency: Resume Claim Validation uses explicit 'Resume claim' and 'Interview evidence' labels", async ({ page }) => {
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+      await page.getByLabel("Job description").fill("Terraform required.");
+      await page.getByLabel(/Your resume/).fill("Architected the Terraform module structure used across all environments.");
+      await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+
+      await expect(page.getByRole("heading", { name: "Resume Claim Validation" })).toBeVisible();
+      await expect(page.getByText(/Resume claim:\s*"Architected the Terraform module structure/)).toBeVisible();
+      await expect(page.getByText(/Interview evidence:\s*Not yet validated/)).toBeVisible();
+    });
+
+    for (const width of [375, 390, 412]) {
+      test(`Evidence Transparency disclosures render at ${width}px with no horizontal overflow`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.goto("/interview");
+        await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+        await page.getByLabel("Job description").fill("ECS required.");
+        await page.getByLabel(/Your resume/).fill("Built and operated container workloads using AWS Fargate.");
+        await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+
+        await page.getByRole("button", { name: /Show why ECS \(via Fargate\) is marked Inferred/ }).click();
+        await page.getByRole("button", { name: "Why?" }).click();
+
+        const [scrollWidth, clientWidth] = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+        expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
+      });
+    }
   });
 
   test("existing General Interview mode is unaffected by the Job-Specific tab: config filters, start, and session flow still work", async ({ page }) => {

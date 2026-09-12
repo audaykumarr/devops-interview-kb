@@ -5,6 +5,8 @@ import {
   buildRequirementAssessments,
   extractJDRequirements,
   extractResumeSkills,
+  resumeSkillEvidenceSource,
+  MATCH_RULE_LABEL,
   type RequirementAssessment,
 } from "../../lib/job-match";
 import type { InterviewQuestionEntry } from "../../lib/interview-session";
@@ -304,4 +306,97 @@ test("no capability requirement is silently duplicated when the JD also names on
   const requirements = extractJDRequirements("Requirements:\n- Kubernetes\n- Container orchestration experience");
   const kubernetesEntries = requirements.filter((r) => r.tag === "kubernetes");
   assert.equal(kubernetesEntries.length, 1, "should not produce a separate capability requirement duplicating an already-named tool");
+});
+
+test("EVIDENCE TRANSPARENCY: resumeSkillEvidenceSource reports Direct for a clean, unhedged mention", () => {
+  const skills = extractResumeSkills("Managed production Kubernetes clusters.");
+  const kubernetes = skills.find((s) => s.tag === "kubernetes")!;
+  assert.equal(resumeSkillEvidenceSource(kubernetes), "direct");
+  assert.match(kubernetes.matchedSentence ?? "", /Managed production Kubernetes clusters/);
+});
+
+test("EVIDENCE TRANSPARENCY: resumeSkillEvidenceSource reports Inferred for an ambiguous, unhedged mention", () => {
+  const skills = extractResumeSkills("Built workloads using AWS Fargate for production services.");
+  const ecs = skills.find((s) => s.tag === "ecs")!;
+  assert.ok(ecs);
+  assert.equal(resumeSkillEvidenceSource(ecs), "inferred");
+  assert.equal(ecs.ambiguousSource, "Fargate");
+});
+
+test("EVIDENCE TRANSPARENCY: resumeSkillEvidenceSource reports Weak for a hedged, non-ambiguous mention", () => {
+  const skills = extractResumeSkills("Familiar with Kubernetes.");
+  const kubernetes = skills.find((s) => s.tag === "kubernetes")!;
+  assert.equal(resumeSkillEvidenceSource(kubernetes), "weak");
+});
+
+test("EVIDENCE TRANSPARENCY: an ambiguous mention that is also hedged reports Weak, not Inferred", () => {
+  const skills = extractResumeSkills("Some exposure to AWS Fargate-based workloads.");
+  const ecs = skills.find((s) => s.tag === "ecs")!;
+  assert.ok(ecs);
+  assert.equal(ecs.ambiguous, true);
+  assert.equal(ecs.weakSignal, true);
+  assert.equal(resumeSkillEvidenceSource(ecs), "weak", "weak must take display priority over inferred");
+});
+
+test("EVIDENCE TRANSPARENCY: when a clean mention is found before any hedged mention of the same tag, the tag reports Direct", () => {
+  const skills = extractResumeSkills("Designed Kubernetes platforms for three production clusters. Familiar with Kubernetes tooling as well.");
+  const kubernetes = skills.find((s) => s.tag === "kubernetes")!;
+  assert.equal(resumeSkillEvidenceSource(kubernetes), "direct");
+  assert.match(kubernetes.matchedSentence ?? "", /Designed Kubernetes platforms/);
+});
+
+test("EVIDENCE TRANSPARENCY: a strong-evidence assessment carries the actual resume sentence, not a generated one", () => {
+  const assessments = buildRequirementAssessments(extractJDRequirements("Kubernetes required."), extractResumeSkills("Managed production Kubernetes clusters."));
+  const kubernetes = assessments.find((a) => a.tag === "kubernetes")!;
+  assert.equal(kubernetes.matchRule, "direct");
+  assert.equal(MATCH_RULE_LABEL[kubernetes.matchRule], "Direct technology match");
+  assert.equal(kubernetes.matchedSentence, "Managed production Kubernetes clusters.");
+});
+
+test("EVIDENCE TRANSPARENCY: a plain tool-named JD requirement records the literal matched JD phrase", () => {
+  const requirements = extractJDRequirements("Kubernetes required.");
+  assert.equal(requirements[0]!.sourcePhrase, "kubernetes");
+
+  const synonymRequirements = extractJDRequirements("K8s experience required.");
+  assert.equal(synonymRequirements[0]!.tag, "kubernetes");
+  assert.equal(synonymRequirements[0]!.sourcePhrase, "k8s");
+});
+
+test("EVIDENCE TRANSPARENCY: a capability-derived JD requirement still records the capability phrase as its sourcePhrase", () => {
+  const requirements = extractJDRequirements("Container orchestration experience required.");
+  assert.equal(requirements[0]!.sourcePhrase, "container orchestration");
+});
+
+test("EVIDENCE TRANSPARENCY: an absent requirement has no matched resume sentence, so the UI falls back to 'No mention found'", () => {
+  const assessments = buildRequirementAssessments(extractJDRequirements("Security required."), extractResumeSkills(""));
+  const security = assessments[0]!;
+  assert.equal(security.evidence, "absent");
+  assert.equal(security.matchRule, "none");
+  assert.equal(security.matchedSentence, undefined);
+  assert.equal(MATCH_RULE_LABEL[security.matchRule], "No match found");
+});
+
+test("EVIDENCE TRANSPARENCY: an ambiguous mention that satisfies a capability requirement is labeled Inferred/ambiguous, never Direct", () => {
+  const requirements = extractJDRequirements("Container orchestration experience required.");
+  const skills = extractResumeSkills("Built and operated container workloads using AWS Fargate.");
+  const assessments = buildRequirementAssessments(requirements, skills);
+
+  assert.equal(assessments[0]!.evidence, "strong");
+  assert.equal(assessments[0]!.matchRule, "ambiguous-capability");
+  assert.equal(MATCH_RULE_LABEL[assessments[0]!.matchRule], "Inferred/ambiguous signal");
+});
+
+test("EVIDENCE TRANSPARENCY: a related-but-different tool is labeled Related technology, not Direct or Inferred", () => {
+  const assessments = buildRequirementAssessments(extractJDRequirements("Kubernetes required."), extractResumeSkills("Deployed services to ECS for container workloads."));
+  assert.equal(assessments[0]!.evidence, "adjacent");
+  assert.equal(assessments[0]!.matchRule, "adjacent-tool");
+  assert.equal(MATCH_RULE_LABEL[assessments[0]!.matchRule], "Related technology");
+  assert.equal(assessments[0]!.matchedSentence, "Deployed services to ECS for container workloads.");
+});
+
+test("EVIDENCE TRANSPARENCY: none of the internal match-rule names ever equal the simplified label shown to users", () => {
+  const internalOnlyNames = ["ambiguous-adjacent", "implied", "adjacent-tool", "ambiguous-capability", "hedged-direct", "hedged-alias"];
+  for (const label of Object.values(MATCH_RULE_LABEL)) {
+    assert.ok(!internalOnlyNames.includes(label), `"${label}" must not be an internal rule name`);
+  }
 });

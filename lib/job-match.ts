@@ -28,9 +28,50 @@ export interface ResumeSkill {
   tag: TechTag;
   isClaim: boolean;
   claimPhrase?: string;
+  matchedSentence?: string;
   weakSignal?: boolean;
   ambiguous?: boolean;
   ambiguousSource?: string;
+}
+
+export type MatchRule =
+  | "direct"
+  | "alias"
+  | "ambiguous-capability"
+  | "hedged-direct"
+  | "hedged-alias"
+  | "ambiguous-adjacent"
+  | "adjacent-tool"
+  | "none";
+
+export const MATCH_RULE_LABEL: Record<MatchRule, string> = {
+  direct: "Direct technology match",
+  alias: "Direct technology match",
+  "ambiguous-capability": "Inferred/ambiguous signal",
+  "hedged-direct": "Direct technology match",
+  "hedged-alias": "Direct technology match",
+  "ambiguous-adjacent": "Inferred/ambiguous signal",
+  "adjacent-tool": "Related technology",
+  none: "No match found",
+};
+
+const MATCH_RULE_EMBED: Record<MatchRule, string> = {
+  direct: "a direct match",
+  alias: "a direct match",
+  "ambiguous-capability": "an inferred/ambiguous signal",
+  "hedged-direct": "only a weak, hedged mention",
+  "hedged-alias": "only a weak, hedged mention",
+  "ambiguous-adjacent": "an inferred/ambiguous signal, not a confirmed match",
+  "adjacent-tool": "only a related but different technology",
+  none: "no matching evidence",
+};
+
+export type EvidenceSource = "direct" | "inferred" | "weak";
+
+export function resumeSkillEvidenceSource(skill: ResumeSkill): EvidenceSource {
+  if (skill.weakSignal) return "weak";
+  if (skill.ambiguous) return "inferred";
+  return "direct";
 }
 
 export interface RequirementAssessment {
@@ -42,6 +83,8 @@ export interface RequirementAssessment {
   reason: string;
   equivalentTags?: TechTag[];
   sourcePhrase?: string;
+  matchRule: MatchRule;
+  matchedSentence?: string;
 }
 
 export type ExplanationKind = JobMatchExplanation["kind"];
@@ -93,7 +136,7 @@ export function extractJDRequirements(text: string): JDRequirement[] {
       const list = inNiceSection ? niceReqs : mustReqs;
       if (!seen.has(mention.tag)) {
         seen.add(mention.tag);
-        list.push({ tag: mention.tag, mustHave: !inNiceSection });
+        list.push({ tag: mention.tag, mustHave: !inNiceSection, sourcePhrase: mention.matchedPhrase });
       }
     }
     for (const capability of extractCapabilityMentions(trimmed)) {
@@ -119,10 +162,12 @@ export function extractJDRequirements(text: string): JDRequirement[] {
 export function extractResumeSkills(text: string): ResumeSkill[] {
   const direct: ResumeSkill[] = extractTagMentions(text).map((mention) => {
     const claim = isOwnershipClaim(mention.sentence);
+    const sentence = truncate(mention.sentence, 140);
     return {
       tag: mention.tag,
       isClaim: claim,
-      claimPhrase: claim ? truncate(mention.sentence, 140) : undefined,
+      claimPhrase: claim ? sentence : undefined,
+      matchedSentence: sentence,
       weakSignal: isWeakSignal(mention.sentence),
     };
   });
@@ -131,14 +176,22 @@ export function extractResumeSkills(text: string): ResumeSkill[] {
   const ambiguous: ResumeSkill[] = [];
   for (const mention of extractAmbiguousMentions(text)) {
     const weak = isWeakSignal(mention.sentence);
+    const sentence = truncate(mention.sentence, 140);
     for (const tag of mention.certainTags) {
       if (directTags.has(tag)) continue;
       directTags.add(tag);
-      ambiguous.push({ tag, isClaim: false, weakSignal: weak });
+      ambiguous.push({ tag, isClaim: false, weakSignal: weak, matchedSentence: sentence });
     }
     for (const tag of mention.possibleTags) {
       if (directTags.has(tag)) continue;
-      ambiguous.push({ tag, isClaim: false, weakSignal: weak, ambiguous: true, ambiguousSource: labelize(mention.sourcePhrase.replace(/\s+/g, "-")) });
+      ambiguous.push({
+        tag,
+        isClaim: false,
+        weakSignal: weak,
+        ambiguous: true,
+        ambiguousSource: labelize(mention.sourcePhrase.replace(/\s+/g, "-")),
+        matchedSentence: sentence,
+      });
     }
   }
 
@@ -153,16 +206,26 @@ interface EvidenceLookup {
   ambiguousResumeTags: ReadonlySet<TechTag>;
   cleanAmbiguousResumeTags: ReadonlySet<TechTag>;
   ambiguousSourceFor: ReadonlyMap<TechTag, string>;
+  sentenceFor: ReadonlyMap<TechTag, string>;
+  ambiguousSentenceFor: ReadonlyMap<TechTag, string>;
 }
 
-function classifyEvidence(requirement: JDRequirement, lookup: EvidenceLookup): { evidence: EvidenceTier; reason: string } {
+function classifyEvidence(
+  requirement: JDRequirement,
+  lookup: EvidenceLookup,
+): { evidence: EvidenceTier; reason: string; matchRule: MatchRule; matchedSentence?: string } {
   const targets = requirement.equivalentTags && requirement.equivalentTags.length > 1 ? requirement.equivalentTags : [requirement.tag];
   const isCapability = targets.length > 1;
   const label = labelize(requirement.tag);
 
   for (const target of targets) {
     if (lookup.cleanDirectTags.has(target)) {
-      return { evidence: "strong", reason: `Your resume mentions ${labelize(target)} directly.` };
+      return {
+        evidence: "strong",
+        reason: `Your resume mentions ${labelize(target)} directly.`,
+        matchRule: "direct",
+        matchedSentence: lookup.sentenceFor.get(target),
+      };
     }
   }
   for (const target of targets) {
@@ -171,6 +234,8 @@ function classifyEvidence(requirement: JDRequirement, lookup: EvidenceLookup): {
       return {
         evidence: "strong",
         reason: source ? `Your resume mentions ${labelize(source)}, which counts as ${labelize(target)}.` : `Your resume shows strong evidence of ${labelize(target)}.`,
+        matchRule: "alias",
+        matchedSentence: source ? lookup.sentenceFor.get(source) : undefined,
       };
     }
   }
@@ -181,27 +246,50 @@ function classifyEvidence(requirement: JDRequirement, lookup: EvidenceLookup): {
         return {
           evidence: "strong",
           reason: `Your resume mentions ${source}, which satisfies the "${requirement.sourcePhrase}" requirement (via ${labelize(target)}).`,
+          matchRule: "ambiguous-capability",
+          matchedSentence: lookup.ambiguousSentenceFor.get(target),
         };
       }
     }
   }
   for (const target of targets) {
     if (lookup.directResumeTags.has(target)) {
-      return { evidence: "adjacent", reason: `Your resume mentions ${labelize(target)}, but only in passing — not as hands-on ownership.` };
+      return {
+        evidence: "adjacent",
+        reason: `Your resume mentions ${labelize(target)}, but only in passing — not as hands-on ownership.`,
+        matchRule: "hedged-direct",
+        matchedSentence: lookup.sentenceFor.get(target),
+      };
     }
     if (lookup.strongResumeTags.has(target)) {
-      return { evidence: "adjacent", reason: `Your resume mentions something that implies ${labelize(target)}, but only in passing.` };
+      const source = Array.from(lookup.directResumeTags).find((t) => impliesStrongTargetsFor(t).includes(target));
+      return {
+        evidence: "adjacent",
+        reason: `Your resume mentions something that implies ${labelize(target)}, but only in passing.`,
+        matchRule: "hedged-alias",
+        matchedSentence: source ? lookup.sentenceFor.get(source) : undefined,
+      };
     }
     if (lookup.ambiguousResumeTags.has(target)) {
       const source = lookup.ambiguousSourceFor.get(target) ?? "a related technology";
-      return { evidence: "adjacent", reason: `Your resume mentions ${source} — related to ${labelize(target)}, but doesn't confirm it specifically.` };
+      return {
+        evidence: "adjacent",
+        reason: `Your resume mentions ${source} — related to ${labelize(target)}, but doesn't confirm it specifically.`,
+        matchRule: "ambiguous-adjacent",
+        matchedSentence: lookup.ambiguousSentenceFor.get(target),
+      };
     }
     const adjacentSource = Array.from(lookup.directResumeTags).find((t) => adjacentTargetsFor(t).includes(target));
     if (adjacentSource) {
-      return { evidence: "adjacent", reason: `Your resume mentions ${labelize(adjacentSource)} — a related but different tool from ${labelize(target)}.` };
+      return {
+        evidence: "adjacent",
+        reason: `Your resume mentions ${labelize(adjacentSource)} — a related but different tool from ${labelize(target)}.`,
+        matchRule: "adjacent-tool",
+        matchedSentence: lookup.sentenceFor.get(adjacentSource),
+      };
     }
   }
-  return { evidence: "absent", reason: `No mention of ${label} found in your resume.` };
+  return { evidence: "absent", reason: `No mention of ${label} found in your resume.`, matchRule: "none" };
 }
 
 function riskFor(evidence: EvidenceTier): RiskLevel {
@@ -219,15 +307,27 @@ function buildEvidenceLookup(resumeSkills: ResumeSkill[]): EvidenceLookup {
   const ambiguousResumeTags = new Set(ambiguous.map((s) => s.tag));
   const cleanAmbiguousResumeTags = new Set(ambiguous.filter((s) => !s.weakSignal).map((s) => s.tag));
   const ambiguousSourceFor = new Map(ambiguous.filter((s) => s.ambiguousSource).map((s) => [s.tag, s.ambiguousSource!]));
+  const sentenceFor = new Map(certain.filter((s) => s.matchedSentence).map((s) => [s.tag, s.matchedSentence!]));
+  const ambiguousSentenceFor = new Map(ambiguous.filter((s) => s.matchedSentence).map((s) => [s.tag, s.matchedSentence!]));
 
-  return { directResumeTags, cleanDirectTags, strongResumeTags, cleanStrongResumeTags, ambiguousResumeTags, cleanAmbiguousResumeTags, ambiguousSourceFor };
+  return {
+    directResumeTags,
+    cleanDirectTags,
+    strongResumeTags,
+    cleanStrongResumeTags,
+    ambiguousResumeTags,
+    cleanAmbiguousResumeTags,
+    ambiguousSourceFor,
+    sentenceFor,
+    ambiguousSentenceFor,
+  };
 }
 
 export function buildRequirementAssessments(requirements: JDRequirement[], resumeSkills: ResumeSkill[]): RequirementAssessment[] {
   const lookup = buildEvidenceLookup(resumeSkills);
 
   return requirements.map((req) => {
-    const { evidence, reason } = classifyEvidence(req, lookup);
+    const { evidence, reason, matchRule, matchedSentence } = classifyEvidence(req, lookup);
     return {
       tag: req.tag,
       label: labelize(req.tag),
@@ -237,6 +337,8 @@ export function buildRequirementAssessments(requirements: JDRequirement[], resum
       reason,
       equivalentTags: req.equivalentTags,
       sourcePhrase: req.sourcePhrase,
+      matchRule,
+      matchedSentence,
     };
   });
 }
@@ -383,8 +485,10 @@ export function buildJobSpecificSession(
           kind === "validating-claim"
             ? `Selected to validate your claim: "${claimPhraseByTag.get(assessment.tag)}"`
             : kind === "covering-gap"
-              ? `Selected because ${assessment.label} is required by the JD and ${assessment.evidence === "absent" ? "your resume shows no evidence of it" : "your resume only shows a related but different tool"}.`
-              : `Selected because ${assessment.label} is a core JD requirement your resume supports.`,
+              ? `Selected because ${assessment.label} is required by the JD and your resume shows ${MATCH_RULE_EMBED[assessment.matchRule]} for it.`
+              : assessment.matchRule === "ambiguous-capability"
+                ? `Selected because ${assessment.label} is a core JD requirement — your resume supports it via an inferred/ambiguous signal.`
+                : `Selected because ${assessment.label} is a core JD requirement your resume supports.`,
       };
     }
   }
