@@ -1,6 +1,6 @@
 import { labelize } from "./format";
 import { pickRepresentativeQuestions } from "@/scripts/lib/guide-question-selection";
-import { questionMatchesTag, type RequirementAssessment, type ResumeSkill } from "./job-match";
+import { questionMatchesRequirement, type RequirementAssessment, type ResumeSkill } from "./job-match";
 import type { AnsweredQuestion, InterviewQuestionEntry, JobMatchExplanation, SelfAssessment } from "./interview-session";
 
 export interface JobSessionRecord {
@@ -206,7 +206,7 @@ export function recommendNextPractice(
     .slice(0, limit);
 
   return priorities.map(({ assessment, untested }) => {
-    const candidates = pool.filter((q) => questionMatchesTag(q, assessment.tag));
+    const candidates = pool.filter((q) => questionMatchesRequirement(q, assessment));
     const fresh = candidates.filter((q) => !answeredIds.has(q.id));
     const chosen = pickRepresentativeQuestions(fresh.length > 0 ? fresh : candidates, new Set(), questionsPerTag);
     return {

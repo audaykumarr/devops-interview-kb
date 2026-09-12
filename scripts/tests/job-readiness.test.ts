@@ -286,3 +286,16 @@ test("recommendNextPractice does not recommend a requirement that was already na
   const recs = recommendNextPractice(assessments, performance, pool, new Set());
   assert.equal(recs.length, 0);
 });
+
+test("recommendNextPractice draws from every tag in a capability requirement's equivalence set", () => {
+  const assessments = [assessment({ tag: "kubernetes", label: "Container orchestration", evidence: "absent", equivalentTags: ["kubernetes", "ecs"] })];
+  const performance = [{ tag: "kubernetes", label: "Container orchestration", tested: false, nailed: 0, partial: 0, needsWork: 0, total: 0 }];
+  const pool = [
+    q({ id: "ecs-1", category: "aws", technologies: ["ecs"] }),
+    q({ id: "k8s-1", category: "kubernetes", technologies: ["kubernetes"] }),
+  ];
+  const recs = recommendNextPractice(assessments, performance, pool, new Set());
+  assert.equal(recs.length, 1);
+  const ids = recs[0]!.questions.map((r) => r.id).sort();
+  assert.deepEqual(ids, ["ecs-1", "k8s-1"]);
+});

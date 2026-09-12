@@ -33,6 +33,13 @@ const SYNONYMS: Record<string, TechTag> = {
   "cloud watch": "cloudwatch",
   "open telemetry": "opentelemetry",
   "identity and access management": "iam",
+  "amazon ecs": "ecs",
+  "amazon eks": "eks",
+  "amazon elastic kubernetes service": "eks",
+  "elastic container service": "ecs",
+  "azure kubernetes service": "aks",
+  "google kubernetes engine": "gke",
+  "azure devops": "azure-pipelines",
 };
 
 const IMPLIES_STRONG: Partial<Record<TechTag, TechTag[]>> = {
@@ -82,20 +89,66 @@ const ADJACENT_OF: Partial<Record<TechTag, TechTag[]>> = {
   grafana: ["monitoring", "observability"],
 };
 
+const CAPABILITY_CONCEPTS: Partial<Record<string, TechTag[]>> = {
+  "container orchestration": ["kubernetes", "ecs", "eks", "aks", "gke"],
+  "continuous delivery pipeline": ["github-actions", "gitlab-ci", "jenkins", "azure-pipelines", "cicd"],
+  "distributed tracing": ["opentelemetry"],
+  "aws container workloads": ["ecs", "eks"],
+};
+
+const AMBIGUOUS_PHRASES: Partial<Record<string, { certain?: TechTag[]; possible: TechTag[] }>> = {
+  fargate: { certain: ["aws"], possible: ["ecs", "eks"] },
+};
+
 const OWNERSHIP_VERBS = [
   "architected", "re-architected", "rearchitected", "led", "spearheaded", "owned", "drove",
   "designed", "built and maintained", "established", "migrated", "redesigned", "engineered",
   "implemented from scratch", "managed the migration", "built from the ground up",
 ];
 
+const WEAK_SIGNAL_PHRASES = [
+  "familiar with", "familiarity with", "exposure to", "some exposure to", "some experience with",
+  "basic knowledge of", "basic understanding of", "worked alongside", "assisted with",
+  "helped with", "involved in", "supported the",
+];
+
 function normalize(text: string): string {
   return ` ${text.toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim()} `;
 }
 
-const SEARCH_PHRASES_LONGEST_FIRST: { phrase: string; tag: TechTag }[] = [
-  ...CANONICAL_TAGS.map((tag) => ({ phrase: normalize(tag), tag })),
-  ...Object.entries(SYNONYMS).map(([phrase, tag]) => ({ phrase: normalize(phrase), tag })),
-].sort((a, b) => b.phrase.length - a.phrase.length);
+function splitSentences(text: string): string[] {
+  return text.split(/(?<=[.!?\n])\s+/).map((s) => s.trim()).filter(Boolean);
+}
+
+function scanLongestFirst<T>(
+  text: string,
+  entries: { phrase: string; value: T }[],
+  alreadyFound: (value: T) => boolean,
+): { value: T; matchedPhrase: string; sentence: string }[] {
+  const sorted = [...entries].sort((a, b) => b.phrase.length - a.phrase.length);
+  const sentences = splitSentences(text);
+  const results: { value: T; matchedPhrase: string; sentence: string }[] = [];
+
+  for (const sentence of sentences) {
+    let remainingHaystack = normalize(sentence);
+    for (const { phrase, value } of sorted) {
+      if (alreadyFound(value)) continue;
+      const pluralPhrase = `${phrase.slice(0, -1)}s `;
+      const matched = remainingHaystack.includes(phrase) ? phrase : remainingHaystack.includes(pluralPhrase) ? pluralPhrase : null;
+      if (matched) {
+        results.push({ value, matchedPhrase: phrase.trim(), sentence: sentence.trim() });
+        remainingHaystack = remainingHaystack.split(matched).join(` ${" ".repeat(Math.max(0, matched.length - 2))} `);
+      }
+    }
+  }
+
+  return results;
+}
+
+const SEARCH_PHRASES_LONGEST_FIRST: { phrase: string; value: TechTag }[] = [
+  ...CANONICAL_TAGS.map((tag) => ({ phrase: normalize(tag), value: tag })),
+  ...Object.entries(SYNONYMS).map(([phrase, tag]) => ({ phrase: normalize(phrase), value: tag })),
+];
 
 export interface TagMention {
   tag: TechTag;
@@ -103,26 +156,77 @@ export interface TagMention {
   sentence: string;
 }
 
-function splitSentences(text: string): string[] {
-  return text.split(/(?<=[.!?\n])\s+/).map((s) => s.trim()).filter(Boolean);
+export function extractTagMentions(text: string): TagMention[] {
+  const found = new Set<TechTag>();
+  const results = scanLongestFirst(text, SEARCH_PHRASES_LONGEST_FIRST, (tag) => found.has(tag));
+  const mentions: TagMention[] = [];
+  for (const r of results) {
+    if (found.has(r.value)) continue;
+    found.add(r.value);
+    mentions.push({ tag: r.value, matchedPhrase: r.matchedPhrase, sentence: r.sentence });
+  }
+  return mentions;
 }
 
-export function extractTagMentions(text: string): TagMention[] {
-  const sentences = splitSentences(text);
-  const found = new Map<TechTag, TagMention>();
+export interface CapabilityMention {
+  sourcePhrase: string;
+  equivalentTags: TechTag[];
+  matchedPhrase: string;
+  sentence: string;
+}
 
-  for (const sentence of sentences) {
-    let remainingHaystack = normalize(sentence);
-    for (const { phrase, tag } of SEARCH_PHRASES_LONGEST_FIRST) {
-      if (found.has(tag)) continue;
-      if (remainingHaystack.includes(phrase)) {
-        found.set(tag, { tag, matchedPhrase: phrase.trim(), sentence: sentence.trim() });
-        remainingHaystack = remainingHaystack.split(phrase).join(` ${" ".repeat(Math.max(0, phrase.length - 2))} `);
-      }
-    }
+const CAPABILITY_SEARCH_ENTRIES: { phrase: string; value: string }[] = Object.keys(CAPABILITY_CONCEPTS).map((phrase) => ({
+  phrase: normalize(phrase),
+  value: phrase,
+}));
+
+export function extractCapabilityMentions(text: string): CapabilityMention[] {
+  const found = new Set<string>();
+  const results = scanLongestFirst(text, CAPABILITY_SEARCH_ENTRIES, (phrase) => found.has(phrase));
+  const mentions: CapabilityMention[] = [];
+  for (const r of results) {
+    if (found.has(r.value)) continue;
+    found.add(r.value);
+    mentions.push({
+      sourcePhrase: r.value,
+      equivalentTags: CAPABILITY_CONCEPTS[r.value] ?? [],
+      matchedPhrase: r.matchedPhrase,
+      sentence: r.sentence,
+    });
   }
+  return mentions;
+}
 
-  return Array.from(found.values());
+export interface AmbiguousMention {
+  sourcePhrase: string;
+  certainTags: TechTag[];
+  possibleTags: TechTag[];
+  matchedPhrase: string;
+  sentence: string;
+}
+
+const AMBIGUOUS_SEARCH_ENTRIES: { phrase: string; value: string }[] = Object.keys(AMBIGUOUS_PHRASES).map((phrase) => ({
+  phrase: normalize(phrase),
+  value: phrase,
+}));
+
+export function extractAmbiguousMentions(text: string): AmbiguousMention[] {
+  const found = new Set<string>();
+  const results = scanLongestFirst(text, AMBIGUOUS_SEARCH_ENTRIES, (phrase) => found.has(phrase));
+  const mentions: AmbiguousMention[] = [];
+  for (const r of results) {
+    if (found.has(r.value)) continue;
+    found.add(r.value);
+    const entry = AMBIGUOUS_PHRASES[r.value];
+    mentions.push({
+      sourcePhrase: r.value,
+      certainTags: entry?.certain ?? [],
+      possibleTags: entry?.possible ?? [],
+      matchedPhrase: r.matchedPhrase,
+      sentence: r.sentence,
+    });
+  }
+  return mentions;
 }
 
 export function expandImpliedStrong(directTags: ReadonlySet<TechTag>): Set<TechTag> {
@@ -144,6 +248,15 @@ export function impliesStrongTargetsFor(tag: TechTag): TechTag[] {
 export function isOwnershipClaim(sentence: string): boolean {
   const haystack = sentence.toLowerCase();
   return OWNERSHIP_VERBS.some((verb) => haystack.includes(verb));
+}
+
+export function isWeakSignal(sentence: string): boolean {
+  const haystack = sentence.toLowerCase();
+  return WEAK_SIGNAL_PHRASES.some((phrase) => haystack.includes(phrase));
+}
+
+export function capabilityConceptPhrases(): string[] {
+  return Object.keys(CAPABILITY_CONCEPTS);
 }
 
 export const DEPTH_QUESTION_TYPES = ["architecture", "scenario", "troubleshooting"] as const;

@@ -5,9 +5,12 @@ import {
   DEPTH_QUESTION_TYPES,
   adjacentTargetsFor,
   expandImpliedStrong,
+  extractAmbiguousMentions,
+  extractCapabilityMentions,
   extractTagMentions,
   impliesStrongTargetsFor,
   isOwnershipClaim,
+  isWeakSignal,
   type TechTag,
 } from "./tech-taxonomy";
 
@@ -17,12 +20,17 @@ export type RiskLevel = "low" | "high";
 export interface JDRequirement {
   tag: TechTag;
   mustHave: boolean;
+  equivalentTags?: TechTag[];
+  sourcePhrase?: string;
 }
 
 export interface ResumeSkill {
   tag: TechTag;
   isClaim: boolean;
   claimPhrase?: string;
+  weakSignal?: boolean;
+  ambiguous?: boolean;
+  ambiguousSource?: string;
 }
 
 export interface RequirementAssessment {
@@ -32,6 +40,8 @@ export interface RequirementAssessment {
   evidence: EvidenceTier;
   risk: RiskLevel;
   reason: string;
+  equivalentTags?: TechTag[];
+  sourcePhrase?: string;
 }
 
 export type ExplanationKind = JobMatchExplanation["kind"];
@@ -59,8 +69,8 @@ function truncate(text: string, max: number): string {
 export function extractJDRequirements(text: string): JDRequirement[] {
   const lines = text.split(/\n/);
   let inNiceSection = false;
-  const mustTags: TechTag[] = [];
-  const niceTags: TechTag[] = [];
+  const mustReqs: JDRequirement[] = [];
+  const niceReqs: JDRequirement[] = [];
   const seenMust = new Set<TechTag>();
   const seenNice = new Set<TechTag>();
 
@@ -75,60 +85,121 @@ export function extractJDRequirements(text: string): JDRequirement[] {
       inNiceSection = false;
       continue;
     }
+
+    const lineTagsFound = new Set<TechTag>();
     for (const mention of extractTagMentions(trimmed)) {
-      if (inNiceSection) {
-        if (!seenNice.has(mention.tag)) {
-          seenNice.add(mention.tag);
-          niceTags.push(mention.tag);
-        }
-      } else if (!seenMust.has(mention.tag)) {
-        seenMust.add(mention.tag);
-        mustTags.push(mention.tag);
+      lineTagsFound.add(mention.tag);
+      const seen = inNiceSection ? seenNice : seenMust;
+      const list = inNiceSection ? niceReqs : mustReqs;
+      if (!seen.has(mention.tag)) {
+        seen.add(mention.tag);
+        list.push({ tag: mention.tag, mustHave: !inNiceSection });
+      }
+    }
+    for (const capability of extractCapabilityMentions(trimmed)) {
+      if (capability.equivalentTags.every((t) => lineTagsFound.has(t))) continue;
+      const primaryTag = capability.equivalentTags.find((t) => !lineTagsFound.has(t)) ?? capability.equivalentTags[0];
+      if (!primaryTag) continue;
+      const seen = inNiceSection ? seenNice : seenMust;
+      const list = inNiceSection ? niceReqs : mustReqs;
+      if (!seen.has(primaryTag)) {
+        seen.add(primaryTag);
+        list.push({ tag: primaryTag, mustHave: !inNiceSection, equivalentTags: capability.equivalentTags, sourcePhrase: capability.sourcePhrase });
       }
     }
   }
 
-  const requirements: JDRequirement[] = mustTags.map((tag) => ({ tag, mustHave: true }));
-  for (const tag of niceTags) {
-    if (!seenMust.has(tag)) requirements.push({ tag, mustHave: false });
+  const requirements: JDRequirement[] = [...mustReqs];
+  for (const req of niceReqs) {
+    if (!seenMust.has(req.tag)) requirements.push(req);
   }
   return requirements;
 }
 
 export function extractResumeSkills(text: string): ResumeSkill[] {
-  return extractTagMentions(text).map((mention) => {
+  const direct: ResumeSkill[] = extractTagMentions(text).map((mention) => {
     const claim = isOwnershipClaim(mention.sentence);
     return {
       tag: mention.tag,
       isClaim: claim,
       claimPhrase: claim ? truncate(mention.sentence, 140) : undefined,
+      weakSignal: isWeakSignal(mention.sentence),
     };
   });
+
+  const directTags = new Set(direct.map((s) => s.tag));
+  const ambiguous: ResumeSkill[] = [];
+  for (const mention of extractAmbiguousMentions(text)) {
+    const weak = isWeakSignal(mention.sentence);
+    for (const tag of mention.certainTags) {
+      if (directTags.has(tag)) continue;
+      directTags.add(tag);
+      ambiguous.push({ tag, isClaim: false, weakSignal: weak });
+    }
+    for (const tag of mention.possibleTags) {
+      if (directTags.has(tag)) continue;
+      ambiguous.push({ tag, isClaim: false, weakSignal: weak, ambiguous: true, ambiguousSource: labelize(mention.sourcePhrase.replace(/\s+/g, "-")) });
+    }
+  }
+
+  return [...direct, ...ambiguous];
 }
 
-function classifyEvidence(
-  tag: TechTag,
-  directResumeTags: ReadonlySet<TechTag>,
-  strongResumeTags: ReadonlySet<TechTag>,
-): { evidence: EvidenceTier; reason: string } {
-  const label = labelize(tag);
+interface EvidenceLookup {
+  directResumeTags: ReadonlySet<TechTag>;
+  cleanDirectTags: ReadonlySet<TechTag>;
+  strongResumeTags: ReadonlySet<TechTag>;
+  cleanStrongResumeTags: ReadonlySet<TechTag>;
+  ambiguousResumeTags: ReadonlySet<TechTag>;
+  cleanAmbiguousResumeTags: ReadonlySet<TechTag>;
+  ambiguousSourceFor: ReadonlyMap<TechTag, string>;
+}
 
-  if (directResumeTags.has(tag)) {
-    return { evidence: "strong", reason: `Your resume mentions ${label} directly.` };
+function classifyEvidence(requirement: JDRequirement, lookup: EvidenceLookup): { evidence: EvidenceTier; reason: string } {
+  const targets = requirement.equivalentTags && requirement.equivalentTags.length > 1 ? requirement.equivalentTags : [requirement.tag];
+  const isCapability = targets.length > 1;
+  const label = labelize(requirement.tag);
+
+  for (const target of targets) {
+    if (lookup.cleanDirectTags.has(target)) {
+      return { evidence: "strong", reason: `Your resume mentions ${labelize(target)} directly.` };
+    }
   }
-  if (strongResumeTags.has(tag)) {
-    const source = Array.from(directResumeTags).find((t) => impliesStrongTargetsFor(t).includes(tag));
-    return {
-      evidence: "strong",
-      reason: source ? `Your resume mentions ${labelize(source)}, which counts as ${label}.` : `Your resume shows strong evidence of ${label}.`,
-    };
+  for (const target of targets) {
+    if (lookup.cleanStrongResumeTags.has(target)) {
+      const source = Array.from(lookup.cleanDirectTags).find((t) => impliesStrongTargetsFor(t).includes(target));
+      return {
+        evidence: "strong",
+        reason: source ? `Your resume mentions ${labelize(source)}, which counts as ${labelize(target)}.` : `Your resume shows strong evidence of ${labelize(target)}.`,
+      };
+    }
   }
-  const adjacentSource = Array.from(directResumeTags).find((t) => adjacentTargetsFor(t).includes(tag));
-  if (adjacentSource) {
-    return {
-      evidence: "adjacent",
-      reason: `Your resume mentions ${labelize(adjacentSource)} — a related but different tool from ${label}.`,
-    };
+  if (isCapability) {
+    for (const target of targets) {
+      if (lookup.cleanAmbiguousResumeTags.has(target)) {
+        const source = lookup.ambiguousSourceFor.get(target) ?? labelize(target);
+        return {
+          evidence: "strong",
+          reason: `Your resume mentions ${source}, which satisfies the "${requirement.sourcePhrase}" requirement (via ${labelize(target)}).`,
+        };
+      }
+    }
+  }
+  for (const target of targets) {
+    if (lookup.directResumeTags.has(target)) {
+      return { evidence: "adjacent", reason: `Your resume mentions ${labelize(target)}, but only in passing — not as hands-on ownership.` };
+    }
+    if (lookup.strongResumeTags.has(target)) {
+      return { evidence: "adjacent", reason: `Your resume mentions something that implies ${labelize(target)}, but only in passing.` };
+    }
+    if (lookup.ambiguousResumeTags.has(target)) {
+      const source = lookup.ambiguousSourceFor.get(target) ?? "a related technology";
+      return { evidence: "adjacent", reason: `Your resume mentions ${source} — related to ${labelize(target)}, but doesn't confirm it specifically.` };
+    }
+    const adjacentSource = Array.from(lookup.directResumeTags).find((t) => adjacentTargetsFor(t).includes(target));
+    if (adjacentSource) {
+      return { evidence: "adjacent", reason: `Your resume mentions ${labelize(adjacentSource)} — a related but different tool from ${labelize(target)}.` };
+    }
   }
   return { evidence: "absent", reason: `No mention of ${label} found in your resume.` };
 }
@@ -137,12 +208,26 @@ function riskFor(evidence: EvidenceTier): RiskLevel {
   return evidence === "strong" ? "low" : "high";
 }
 
-export function buildRequirementAssessments(requirements: JDRequirement[], resumeSkills: ResumeSkill[]): RequirementAssessment[] {
-  const directResumeTags = new Set(resumeSkills.map((s) => s.tag));
+function buildEvidenceLookup(resumeSkills: ResumeSkill[]): EvidenceLookup {
+  const certain = resumeSkills.filter((s) => !s.ambiguous);
+  const ambiguous = resumeSkills.filter((s) => s.ambiguous);
+
+  const directResumeTags = new Set(certain.map((s) => s.tag));
+  const cleanDirectTags = new Set(certain.filter((s) => !s.weakSignal).map((s) => s.tag));
   const strongResumeTags = expandImpliedStrong(directResumeTags);
+  const cleanStrongResumeTags = expandImpliedStrong(cleanDirectTags);
+  const ambiguousResumeTags = new Set(ambiguous.map((s) => s.tag));
+  const cleanAmbiguousResumeTags = new Set(ambiguous.filter((s) => !s.weakSignal).map((s) => s.tag));
+  const ambiguousSourceFor = new Map(ambiguous.filter((s) => s.ambiguousSource).map((s) => [s.tag, s.ambiguousSource!]));
+
+  return { directResumeTags, cleanDirectTags, strongResumeTags, cleanStrongResumeTags, ambiguousResumeTags, cleanAmbiguousResumeTags, ambiguousSourceFor };
+}
+
+export function buildRequirementAssessments(requirements: JDRequirement[], resumeSkills: ResumeSkill[]): RequirementAssessment[] {
+  const lookup = buildEvidenceLookup(resumeSkills);
 
   return requirements.map((req) => {
-    const { evidence, reason } = classifyEvidence(req.tag, directResumeTags, strongResumeTags);
+    const { evidence, reason } = classifyEvidence(req, lookup);
     return {
       tag: req.tag,
       label: labelize(req.tag),
@@ -150,6 +235,8 @@ export function buildRequirementAssessments(requirements: JDRequirement[], resum
       evidence,
       risk: riskFor(evidence),
       reason,
+      equivalentTags: req.equivalentTags,
+      sourcePhrase: req.sourcePhrase,
     };
   });
 }
@@ -164,6 +251,11 @@ function requirementWeight(a: RequirementAssessment): number {
 
 export function questionMatchesTag(question: InterviewQuestionEntry, tag: string): boolean {
   return question.technologies.includes(tag) || question.category === tag || question.question_type.includes(tag);
+}
+
+export function questionMatchesRequirement(question: InterviewQuestionEntry, requirement: { tag: TechTag; equivalentTags?: TechTag[] }): boolean {
+  const targets = requirement.equivalentTags && requirement.equivalentTags.length > 0 ? requirement.equivalentTags : [requirement.tag];
+  return targets.some((t) => questionMatchesTag(question, t));
 }
 
 function allocateSeats(
@@ -235,7 +327,7 @@ export function buildJobSpecificSession(
 
   const availableByTag = new Map<TechTag, number>();
   for (const a of assessments) {
-    availableByTag.set(a.tag, pool.filter((q) => questionMatchesTag(q, a.tag)).length);
+    availableByTag.set(a.tag, pool.filter((q) => questionMatchesRequirement(q, a)).length);
   }
   const noQuestionsAvailable = assessments.filter((a) => (availableByTag.get(a.tag) ?? 0) === 0).map((a) => a.tag);
 
@@ -250,7 +342,7 @@ export function buildJobSpecificSession(
     const seats = seatsByTag.get(assessment.tag) ?? 0;
     if (seats === 0) continue;
 
-    const candidates = pool.filter((q) => questionMatchesTag(q, assessment.tag) && !usedIds.has(q.id));
+    const candidates = pool.filter((q) => questionMatchesRequirement(q, assessment) && !usedIds.has(q.id));
     const fresh = candidates.filter((q) => !recentlySeenIds.has(q.id));
     const seen = candidates.filter((q) => recentlySeenIds.has(q.id));
 

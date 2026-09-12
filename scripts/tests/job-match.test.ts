@@ -225,3 +225,83 @@ test("a requirement matches a question through category or question_type, not on
   const result = buildJobSpecificSession(pool, assessments, [], 1, new Set(), (x) => x);
   assert.deepEqual(result.questionIds, ["sec-by-category"]);
 });
+
+test("REFINEMENT: an ambiguous resume mention never produces strong evidence for two separate specific-tool requirements at once", () => {
+  const requirements = [
+    ...extractJDRequirements("ECS required."),
+    ...extractJDRequirements("EKS required."),
+  ];
+  const skills = extractResumeSkills("Built and operated container workloads using AWS Fargate.");
+  const assessments = buildRequirementAssessments(requirements, skills);
+
+  const ecs = assessments.find((a) => a.tag === "ecs")!;
+  const eks = assessments.find((a) => a.tag === "eks")!;
+  assert.notEqual(ecs.evidence, "strong", "ECS must not be strong from an ambiguous Fargate mention alone");
+  assert.notEqual(eks.evidence, "strong", "EKS must not be strong from an ambiguous Fargate mention alone");
+  assert.equal(ecs.evidence, "adjacent");
+  assert.equal(eks.evidence, "adjacent");
+});
+
+test("REFINEMENT: the same ambiguous mention DOES satisfy a capability-phrased requirement at strong", () => {
+  const requirements = extractJDRequirements("Container orchestration experience required.");
+  const skills = extractResumeSkills("Built and operated container workloads using AWS Fargate.");
+  const assessments = buildRequirementAssessments(requirements, skills);
+
+  assert.equal(assessments.length, 1);
+  assert.equal(assessments[0]!.evidence, "strong");
+  assert.match(assessments[0]!.reason, /Fargate/);
+  assert.match(assessments[0]!.reason, /container orchestration/);
+});
+
+test("REFINEMENT: a tool-named requirement still requires the exact tool, even though a capability entry links it to an adjacent one", () => {
+  const requirements = extractJDRequirements("Kubernetes required.");
+  const skills = extractResumeSkills("Deployed services to ECS for container workloads.");
+  const assessments = buildRequirementAssessments(requirements, skills);
+
+  assert.equal(assessments[0]!.evidence, "adjacent", "a genuinely different tool must stay adjacent for a tool-named requirement");
+});
+
+test("weak-signal language caps evidence at adjacent, never strong", () => {
+  const cases = ["Familiar with Kubernetes.", "Some exposure to Terraform.", "Worked alongside the Kubernetes team."];
+  for (const resumeText of cases) {
+    const tag = resumeText.includes("Terraform") ? "terraform" : "kubernetes";
+    const requirements = extractJDRequirements(`${tag === "terraform" ? "Terraform" : "Kubernetes"} required.`);
+    const skills = extractResumeSkills(resumeText);
+    const assessments = buildRequirementAssessments(requirements, skills);
+    assert.equal(assessments[0]!.evidence, "adjacent", `"${resumeText}" must cap at adjacent`);
+  }
+});
+
+test("genuine ownership language still produces strong evidence, unaffected by the weak-signal check", () => {
+  const cases = [
+    ["Kubernetes required.", "Designed Kubernetes platforms for three production clusters."],
+    ["Terraform required.", "Owned Terraform infrastructure end to end."],
+    ["Kubernetes required.", "Operated production Kubernetes clusters at scale."],
+  ];
+  for (const [jd, resumeText] of cases) {
+    const assessments = buildRequirementAssessments(extractJDRequirements(jd!), extractResumeSkills(resumeText!));
+    assert.equal(assessments[0]!.evidence, "strong", `"${resumeText}" must remain strong`);
+  }
+});
+
+test("expanded aliases from the brief resolve correctly end to end", () => {
+  const assessments = buildRequirementAssessments(extractJDRequirements("Amazon ECS required."), extractResumeSkills("Ran services on Amazon ECS."));
+  assert.equal(assessments[0]!.tag, "ecs");
+  assert.equal(assessments[0]!.evidence, "strong");
+});
+
+test("a capability-phrased requirement draws candidate questions from every tag in its equivalence set", () => {
+  const assessments = buildRequirementAssessments(extractJDRequirements("Container orchestration experience required."), []);
+  const pool = [
+    q({ id: "ecs-only", category: "aws", technologies: ["ecs"], question_type: ["conceptual"] }),
+    q({ id: "k8s-only", category: "kubernetes", technologies: ["kubernetes"], question_type: ["conceptual"] }),
+  ];
+  const result = buildJobSpecificSession(pool, assessments, [], 5, new Set(), (x) => x);
+  assert.equal(result.questionIds.length, 2, "both the ECS and Kubernetes questions should be eligible for one capability requirement");
+});
+
+test("no capability requirement is silently duplicated when the JD also names one of its member tools directly", () => {
+  const requirements = extractJDRequirements("Requirements:\n- Kubernetes\n- Container orchestration experience");
+  const kubernetesEntries = requirements.filter((r) => r.tag === "kubernetes");
+  assert.equal(kubernetesEntries.length, 1, "should not produce a separate capability requirement duplicating an already-named tool");
+});
