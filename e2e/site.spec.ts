@@ -917,11 +917,28 @@ test.describe("DevOps Interview Knowledge Base", () => {
       await expect(band).toContainText("Low");
     });
 
+    test("Practice Next is absent before any session has been run for this JD", async ({ page }) => {
+      await page.goto("/interview");
+      await page.getByRole("button", { name: "Job-Specific Interview" }).click();
+      await page.getByLabel("Job description").fill("Requirements:\n- Kubernetes\n- Security");
+      await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+
+      await expect(page.getByRole("heading", { name: "Job Readiness" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Practice Next" })).toHaveCount(0);
+    });
+
     test("Practice Next recommendations link only to real, existing question pages", async ({ page }) => {
       await page.goto("/interview");
       await page.getByRole("button", { name: "Job-Specific Interview" }).click();
       await page.getByLabel("Job description").fill("Requirements:\n- Kubernetes\n- Security");
       await page.getByRole("button", { name: "Review Extracted Skills" }).click();
+      await page.getByRole("button", { name: "5", exact: true }).click();
+      await page.getByRole("button", { name: "Build My Interview" }).click();
+      for (let i = 0; i < 5 && (await page.getByRole("button", { name: "Reveal Answer" }).isVisible().catch(() => false)); i++) {
+        await page.getByRole("button", { name: "Reveal Answer" }).click();
+        await page.getByRole("button", { name: "Need more work" }).click();
+      }
+      await page.getByRole("button", { name: "Rebuild From Same JD / Resume" }).click();
 
       await expect(page.getByRole("heading", { name: "Practice Next" })).toBeVisible();
       const firstLink = page.locator("h3", { hasText: "Practice Next" }).locator("xpath=following-sibling::div[1]//a").first();

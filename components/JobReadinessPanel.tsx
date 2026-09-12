@@ -41,7 +41,7 @@ export function JobReadinessPanel({
   const performance = computeRequirementPerformance(assessments, records);
   const claims = computeClaimValidationStatuses(resumeSkills, records);
   const answeredIds = new Set(records.flatMap((r) => r.answers.map((a) => a.id)));
-  const recommendations = recommendNextPractice(assessments, performance, pool, answeredIds);
+  const recommendations = records.length > 0 ? recommendNextPractice(assessments, performance, pool, answeredIds) : [];
 
   const performanceByTag = new Map(performance.map((p) => [p.tag, p]));
 
