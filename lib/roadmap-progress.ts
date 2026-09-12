@@ -44,7 +44,7 @@ export function saveRoadmapProgress(completedStageIds: Set<string>): void {
   }
 }
 
-/** Same tolerant-parse shape as parseRoadmapProgress, for the existing practice-progress key written by PracticeClient. */
+/** Same tolerant-parse shape as parseRoadmapProgress, for the existing practice-progress key. */
 export function parsePracticeProgress(raw: string | null): Record<string, string> {
   if (!raw) return {};
   try {

@@ -50,13 +50,13 @@ export default function HomePage() {
           </p>
         </Link>
         <Link
-          href="/practice"
+          href="/interview"
           className="rounded-lg border border-slate-200 bg-white p-5 hover:border-indigo-400 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:hover:border-indigo-500"
         >
-          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Jump into Practice</p>
+          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Start Interview Mode</p>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Flashcard-style practice — reveal each answer, filter by category or difficulty, and work through the
-            bank one question at a time.
+            Practice with a timed, assessment-style mock interview — configure by level, question type, and
+            difficulty, then self-score and see a breakdown at the end.
           </p>
         </Link>
       </section>

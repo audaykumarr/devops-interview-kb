@@ -38,18 +38,17 @@ Roadmap
    ↓
 Guides
    ↓
-Practice
-   ↓
 Interview Questions
    ↓
-Interview Mode (planned)
+Interview Mode
 ```
 
 A **Roadmap** sequences what to learn and in what order. **Guides** go deep
-on a specific technology or domain. **Practice** mode drills the question
-bank interactively. Everything ultimately traces back to the **Interview
-Questions** themselves — the foundation the rest of the platform is built on.
-Interview Mode (timed, assessment-style practice) is planned, not built yet.
+on a specific technology or domain. Everything ultimately traces back to the
+**Interview Questions** themselves — the foundation the rest of the platform
+is built on. **Interview Mode** puts them to the test in a timed,
+assessment-style mock interview, configurable by level, question type, and
+difficulty, with self-scoring and a results breakdown at the end.
 
 ## What makes this different
 
@@ -102,10 +101,12 @@ whole platform. Currently published:
 
 See the full list at [/guides](https://devopsinterviewkb.com/guides).
 
-### 3. Practice questions
+### 3. Test yourself with Interview Mode
 
-[Practice mode](https://devopsinterviewkb.com/practice) drills the question
-bank one card at a time. Filter the whole site — practice, browse, or
+[Interview Mode](https://devopsinterviewkb.com/interview) runs a timed,
+assessment-style mock interview: configure by level, question type, and
+difficulty, self-score each answer as you go, and get a results breakdown
+at the end. Filter the whole site — browse or
 [search](https://devopsinterviewkb.com/search) — by category, technology,
 difficulty, interview level, and question type to focus on exactly what
 you need.
@@ -175,7 +176,7 @@ Validation (content, Guides, Roadmaps — schema + cross-reference checks)
 Generation (questions.json, statistics.json, guides.json, roadmaps.json, ...)
         │
         ▼
-Next.js Website (search, categories, filters, Guides, Roadmap, practice)
+Next.js Website (search, categories, filters, Guides, Roadmap, Interview Mode)
 ```
 
 The repository is the source of truth. The website is a presentation layer
@@ -193,8 +194,8 @@ technical decisions.
   follow-up-question content-gap report, and Guide/Roadmap indexes — see
   [Content engine](#content-engine).
 - **Website**: Next.js homepage, category/technology/difficulty/interview-level/
-  question-type pages, question pages, search with filtering, Practice
-  mode, Guides, the DevOps Engineer Roadmap, responsive/dark mode design —
+  question-type pages, question pages, search with filtering, Interview
+  Mode, Guides, the DevOps Engineer Roadmap, responsive/dark mode design —
   see [Website](#website).
 - **SEO**: canonical URLs, OpenGraph/Twitter metadata, per-question generated
   OG images, structured data (`QAPage`, `TechArticle`, `Course`,
@@ -341,7 +342,7 @@ npm start       # serve the production build
 
 | Route | Purpose |
 | --- | --- |
-| `/` | Homepage — stats, browse by category/difficulty/technology, Guides/Practice entry points |
+| `/` | Homepage — stats, browse by category/difficulty/technology, Guides/Interview Mode entry points |
 | `/<category>` | Category page (e.g. `/aws`, `/kubernetes`), filterable via `?difficulty=&technology=&type=&subcategory=` |
 | `/technologies/<technology>` | Technology page, filterable via `?difficulty=&category=&type=` |
 | `/difficulty/<level>` | Difficulty page, filterable and paginated |
@@ -349,12 +350,13 @@ npm start       # serve the production build
 | `/type/<type>` | Question Type page (e.g. `/type/troubleshooting`), aggregating across categories |
 | `/questions/<category>/<subcategory>/<slug>` | Question detail page |
 | `/search` | Client-side instant search with the full filter set |
-| `/practice` | Flashcard-style practice mode with progress tracking |
+| `/interview` | Timed, assessment-style mock interview mode with self-scoring |
+| `/practice` | Permanently redirects (308) to `/interview` |
 | `/guides`, `/guides/<slug>` | Guides index and detail pages |
 | `/roadmaps`, `/roadmaps/<slug>` | Roadmap index and detail pages |
 
 Filters on browse pages are URL search params (shareable, server-rendered);
-`/search` and `/practice` are fully client-interactive, with the same
+`/search` and `/interview` are fully client-interactive, with the same
 filter logic reused rather than reimplemented per page. Related questions
 prefer curated `related_questions` links and label any
 `generated/related-suggestions.json` fallback as "Suggested" rather than
@@ -386,8 +388,9 @@ forgotten on any individual page:
   noindexed thin question types, and `/search` result variants are
   excluded to avoid thin/duplicate-content entries.
 - **robots.txt** (`app/robots.ts`) — allows everything except parameterized
-  `/search?*` and `/practice?*` results (a JS-rendered subset of
-  already-indexed pages).
+  `/search?*`, `/practice?*`, and `/interview?*` results (a JS-rendered
+  subset of already-indexed pages; `/practice` itself permanently redirects
+  to `/interview`).
 
 Set `NEXT_PUBLIC_SITE_URL` (see [.env.example](.env.example)) to your real
 production origin before deploying — canonical URLs, OpenGraph URLs, the
@@ -403,8 +406,8 @@ npm run test:e2e
 Playwright ([playwright.config.ts](playwright.config.ts),
 [e2e/site.spec.ts](e2e/site.spec.ts)) builds and serves the production site,
 then checks — on both a desktop and a mobile viewport — that the homepage,
-category/technology/level/type pages, question pages, search, Practice
-mode, Guides, the Roadmap (including progress tracking), filters, SEO
+category/technology/level/type pages, question pages, search, Interview
+Mode, Guides, the Roadmap (including progress tracking), filters, SEO
 metadata, and the sitemap/robots.txt all work, with zero browser console
 errors and no horizontal overflow. The suite grows alongside the site
 rather than staying fixed at a specific count.

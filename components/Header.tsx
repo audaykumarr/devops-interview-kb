@@ -16,8 +16,8 @@ export function Header() {
           <Link href="/search" className="-my-2 py-2 hover:text-slate-900 dark:hover:text-slate-100">
             Search
           </Link>
-          <Link href="/practice" className="-my-2 py-2 hover:text-slate-900 dark:hover:text-slate-100">
-            Practice
+          <Link href="/interview" className="-my-2 py-2 hover:text-slate-900 dark:hover:text-slate-100">
+            Interview Mode
           </Link>
           <Link href="/guides" className="-my-2 py-2 hover:text-slate-900 dark:hover:text-slate-100">
             Guides
