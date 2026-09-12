@@ -24,11 +24,18 @@ export function loadGuideSchemaAndTaxonomy(rootDir: string): {
 
 export function loadRawGuides(rootDir: string): RawQuestionFile[] {
   const guidesDir = join(rootDir, "content", "guides");
+  let files: string[];
   try {
-    return findMarkdownFiles(guidesDir).map((file) => loadQuestionFile(file, rootDir));
-  } catch {
-    return [];
+    files = findMarkdownFiles(guidesDir);
+  } catch (err) {
+    // A missing content/guides directory is a legitimate "no guides yet" state.
+    // Any other error (permissions, etc.) is a real problem and must not be swallowed.
+    if (err instanceof Error && "code" in err && err.code === "ENOENT") return [];
+    throw err;
   }
+  // Outside the try/catch above: a malformed guide file's YAML/frontmatter error
+  // must propagate and fail loudly, not be silently reported as "no guides found".
+  return files.map((file) => loadQuestionFile(file, rootDir));
 }
 
 /** Loads and validates the guide corpus (and, transitively, the question corpus for featured_questions checks); prints an error and exits on any validation failure. */

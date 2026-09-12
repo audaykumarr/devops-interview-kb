@@ -34,7 +34,7 @@
     {
       "slug": "azure",
       "name": "Azure",
-      "description": "Azure interview questions on identity, networking, and resource management for teams running production workloads on Microsoft's cloud."
+      "description": "Azure interview questions covering identity and networking (managed identities, RBAC, Key Vault, private connectivity), compute (App Service, Azure Functions), storage (Blob Storage access, security, and recovery), and AKS — scenario-driven, matching the same depth as this site's AWS and GCP coverage."
     },
     {
       "slug": "gcp",

@@ -123,7 +123,7 @@ This bank is small enough (39 questions) that an artificial multi-week schedule 
 
 ## Related Guides
 
-If your interview also covers Kubernetes, the Kubernetes Interview Guide is a natural companion — many teams running AWS also run EKS. If your interview also covers infrastructure provisioning, the Terraform Interview Guide is a companion too — most of this bank's Terraform questions reason about AWS resources specifically. Azure remains an area for future dedicated coverage.
+If your interview also covers Kubernetes, the Kubernetes Interview Guide is a natural companion — many teams running AWS also run EKS. If your interview also covers infrastructure provisioning, the Terraform Interview Guide is a companion too — most of this bank's Terraform questions reason about AWS resources specifically.
 
 ## References
 

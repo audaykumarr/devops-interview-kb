@@ -40,6 +40,7 @@ const SUBCATEGORY_ORDER: Record<string, string[]> = {
   "aws-devops-interview-guide": ["iam", "lambda", "s3"],
   "terraform-interview-guide": ["providers", "modules", "state"],
   "gcp-interview-guide": ["iam", "storage", "cloud-functions"],
+  "azure-devops-interview-guide": ["identity-and-networking", "compute", "storage", "aks"],
 };
 
 /**

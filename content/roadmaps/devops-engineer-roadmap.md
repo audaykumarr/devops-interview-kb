@@ -1,7 +1,7 @@
 ---
 id: devops-engineer-roadmap
 title: "DevOps Engineer Roadmap"
-description: "A sequenced path from DevOps foundations to production-ready engineering skills, built from this bank's 528 most job-relevant questions."
+description: "A sequenced path from DevOps foundations to production-ready engineering skills, built from this bank's 552 most job-relevant questions."
 target_role: devops-engineer
 estimated_duration_weeks: 14
 status: published
@@ -61,7 +61,7 @@ stages:
     title: Cloud Platforms
     prerequisites: [iac]
     categories: [aws, gcp, cloud-fundamentals, cloud-architecture, azure]
-    related_guides: [aws-devops-interview-guide, gcp-interview-guide]
+    related_guides: [aws-devops-interview-guide, azure-devops-interview-guide, gcp-interview-guide]
     recommended_questions:
       - aws-s3-public-bucket-exposure-001
       - azure-aks-autoscaler-not-scaling-001
@@ -110,7 +110,7 @@ stages:
 
 ## Introduction
 
-This roadmap sequences 528 of this bank's 566 technical interview questions into a single path: what to learn, in what order, to go from DevOps fundamentals to job-ready. It doesn't answer interview questions for you — the [DevOps Interview Guide](/guides/devops-interview-guide) and category pages already do that. What this roadmap adds is sequencing: which of the bank's 16 preparation domains to tackle first, which depend on which, and when you've actually covered enough of a stage to move on.
+This roadmap sequences 552 of this bank's 590 technical interview questions into a single path: what to learn, in what order, to go from DevOps fundamentals to job-ready. It doesn't answer interview questions for you — the [DevOps Interview Guide](/guides/devops-interview-guide) and category pages already do that. What this roadmap adds is sequencing: which of the bank's 16 preparation domains to tackle first, which depend on which, and when you've actually covered enough of a stage to move on.
 
 Twelve stages, each scoped to a live-derived slice of the question bank, each with a small checkpoint set and a short representative practice sample — never the full stage dumped onto one page.
 
@@ -118,7 +118,7 @@ Twelve stages, each scoped to a live-derived slice of the question bank, each wi
 
 This targets the **DevOps Engineer** interview level specifically — the bulk of a working DevOps engineer's day-to-day tooling, troubleshooting, and judgment calls, not a first-role primer and not a staff-level design review. If you're earlier in your career, the sequence still applies, but expect some stages (Cloud, GitOps, Security) to assume more working familiarity than a from-scratch tutorial would.
 
-Reality check on the source material: true beginner-difficulty content in this bank is thin (49 of 566 questions, concentrated almost entirely in Foundations, Cloud Fundamentals, Docker, and Git). Past those, the bank assumes you already have working familiarity and tests judgment, not vocabulary. This roadmap's job is sequencing and checkpointing that reality, not manufacturing tutorial content that doesn't exist here — where a stage's own coverage is thin, "What to Learn" points to the general skill, and the checkpoint questions are there to test it, not teach it from zero.
+Reality check on the source material: true beginner-difficulty content in this bank is thin (50 of 590 questions, concentrated almost entirely in Foundations, Cloud Fundamentals, Docker, and Git). Past those, the bank assumes you already have working familiarity and tests judgment, not vocabulary. This roadmap's job is sequencing and checkpointing that reality, not manufacturing tutorial content that doesn't exist here — where a stage's own coverage is thin, "What to Learn" points to the general skill, and the checkpoint questions are there to test it, not teach it from zero.
 
 ## Deferred Areas
 
@@ -217,7 +217,7 @@ This is where "I can write a YAML pipeline" turns into "I can diagnose why this 
 
 ## Stage: Orchestration
 
-Kubernetes and Helm — by a wide margin the largest stage in this roadmap (142 of 528 questions, over a quarter of the roadmap's total scope). Go deep here; it's the dominant real-world DevOps Engineer skill in this bank. The dedicated [Kubernetes Interview Guide](/guides/kubernetes-interview-guide) covers this stage's full 128-question Kubernetes slice in depth.
+Kubernetes and Helm — by a wide margin the largest stage in this roadmap (142 of 552 questions, over a quarter of the roadmap's total scope). Go deep here; it's the dominant real-world DevOps Engineer skill in this bank. The dedicated [Kubernetes Interview Guide](/guides/kubernetes-interview-guide) covers this stage's full 128-question Kubernetes slice in depth.
 
 ### Why It Matters
 
@@ -260,9 +260,9 @@ Provisioning is a different discipline from operating what's provisioned — sta
 
 ## Stage: Cloud Platforms
 
-AWS, GCP, Azure, cloud fundamentals, and cross-cloud architecture. Lands here deliberately — by this point you already understand provisioning and orchestration, so cloud-specific content (IAM models, managed Kubernetes, serverless) is an application of those concepts to a vendor, not a disconnected topic. The dedicated [AWS DevOps Interview Guide](/guides/aws-devops-interview-guide) and [GCP Interview Guide](/guides/gcp-interview-guide) cover this stage's two deepest single-provider slices.
+AWS, GCP, Azure, cloud fundamentals, and cross-cloud architecture. Lands here deliberately — by this point you already understand provisioning and orchestration, so cloud-specific content (IAM models, managed Kubernetes, serverless) is an application of those concepts to a vendor, not a disconnected topic. The dedicated [AWS DevOps Interview Guide](/guides/aws-devops-interview-guide), [Azure DevOps Interview Guide](/guides/azure-devops-interview-guide), and [GCP Interview Guide](/guides/gcp-interview-guide) cover this stage's three single-provider slices.
 
-**Pick one provider to go deep on rather than splitting attention evenly across all three.** AWS is this bank's deepest single-provider path (39 questions, a dedicated Guide, and a clear IAM/Lambda/S3 structure). GCP is comparably deep (27 questions, its own dedicated Guide covering IAM, Storage, and Cloud Functions) — a reasonable second choice if AWS isn't your target. Azure is the thinnest of the three here (10 questions, no dedicated Guide yet) and best treated as a light survey unless it's specifically your target platform.
+**Pick one provider to go deep on rather than splitting attention evenly across all three.** AWS is this bank's deepest single-provider path (39 questions, a dedicated Guide, and a clear IAM/Lambda/S3 structure). Azure is a close second (34 questions, its own dedicated Guide covering Identity & Networking, Compute, Storage, and AKS) — a strong choice if AWS isn't your target, especially if AKS is central to the role. GCP is comparably deep (27 questions, its own dedicated Guide covering IAM, Storage, and Cloud Functions). All three now have a dedicated Guide sequencing the material for you — pick based on which provider your target role actually uses, not on depth alone.
 
 ### Why It Matters
 
@@ -363,9 +363,9 @@ Networking failures are disproportionately represented in real production incide
 
 ## Stage: Production Readiness
 
-Scenarios and troubleshooting methodology — the capstone. Only 14 questions live directly in these two categories, but this stage's real material is the cross-cutting `scenario` (89 questions) and `troubleshooting` (130 questions) question types spread across every stage above. This is the synthesis stage, not a new topic.
+Scenarios and troubleshooting methodology — the capstone. Only 14 questions live directly in these two categories, but this stage's real material is the cross-cutting `scenario` (92 questions) and `troubleshooting` (141 questions) question types spread across every stage above. This is the synthesis stage, not a new topic.
 
-**A note on precision, since this trips people up:** `/troubleshooting` (this stage's own category) is 4 general-methodology questions. `/type/troubleshooting` is 130 questions — every troubleshooting-tagged question across the entire bank, spanning every category above. They are not the same thing, and this roadmap never adds them together.
+**A note on precision, since this trips people up:** `/troubleshooting` (this stage's own category) is 4 general-methodology questions. `/type/troubleshooting` is 141 questions — every troubleshooting-tagged question across the entire bank, spanning every category above. They are not the same thing, and this roadmap never adds them together.
 
 ### Why It Matters
 
@@ -387,4 +387,4 @@ By this stage you've covered the mechanics of every domain — this is where jud
 
 ## Related Guides
 
-Three stages in this roadmap have a dedicated deep-reference Guide: [Kubernetes Interview Guide](/guides/kubernetes-interview-guide) for the full Orchestration stage, [Terraform Interview Guide](/guides/terraform-interview-guide) for the Infrastructure as Code stage's Terraform slice, and the [AWS DevOps Interview Guide](/guides/aws-devops-interview-guide) and [GCP Interview Guide](/guides/gcp-interview-guide) for the Cloud Platforms stage's two deepest single-provider paths. For the roadmap's full scope in one place — all 16 domains, not just the 12 stages sequenced here — see the umbrella [DevOps Interview Guide](/guides/devops-interview-guide), which this roadmap draws its structure from but sequences differently: the Guide is organized for reference (jump to any domain), this roadmap is organized for progression (work through in order).
+Three stages in this roadmap have a dedicated deep-reference Guide: [Kubernetes Interview Guide](/guides/kubernetes-interview-guide) for the full Orchestration stage, [Terraform Interview Guide](/guides/terraform-interview-guide) for the Infrastructure as Code stage's Terraform slice, and the [AWS DevOps Interview Guide](/guides/aws-devops-interview-guide), [Azure DevOps Interview Guide](/guides/azure-devops-interview-guide), and [GCP Interview Guide](/guides/gcp-interview-guide) for the Cloud Platforms stage's three single-provider paths. For the roadmap's full scope in one place — all 16 domains, not just the 12 stages sequenced here — see the umbrella [DevOps Interview Guide](/guides/devops-interview-guide), which this roadmap draws its structure from but sequences differently: the Guide is organized for reference (jump to any domain), this roadmap is organized for progression (work through in order).

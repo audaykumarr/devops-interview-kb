@@ -12,7 +12,7 @@
 An open-source DevOps interview preparation **knowledge base and learning
 platform** — not just a list of questions.
 
-576 original, scenario-driven questions across 39 categories, covering
+600 original, scenario-driven questions across 39 categories, covering
 DevOps fundamentals, AWS, Azure, GCP, Kubernetes, Terraform, Docker, CI/CD
 (GitHub Actions, GitLab CI, Jenkins, Azure Pipelines), security,
 observability, networking, and more — organized into Interview Levels,
@@ -96,6 +96,7 @@ whole platform. Currently published:
 - [DevOps Interview Guide](https://devopsinterviewkb.com/guides/devops-interview-guide) — the umbrella guide across every domain
 - [Kubernetes Interview Guide](https://devopsinterviewkb.com/guides/kubernetes-interview-guide)
 - [AWS DevOps Interview Guide](https://devopsinterviewkb.com/guides/aws-devops-interview-guide)
+- [Azure DevOps Interview Guide](https://devopsinterviewkb.com/guides/azure-devops-interview-guide)
 - [Terraform Interview Guide](https://devopsinterviewkb.com/guides/terraform-interview-guide)
 - [GCP Interview Guide](https://devopsinterviewkb.com/guides/gcp-interview-guide)
 
@@ -125,7 +126,7 @@ Helm · Terraform, Ansible · AWS, Azure, GCP · Security, DevSecOps ·
 Monitoring, Observability, SRE · GitOps, Argo CD · Networking, Databases ·
 System Design, real-world Scenarios, Troubleshooting.
 
-Coverage depth varies by topic — some areas (Kubernetes, AWS, Terraform, GCP)
+Coverage depth varies by topic — some areas (Kubernetes, AWS, Azure, Terraform, GCP)
 go deep with dedicated Guides; others are lighter today and are exactly
 where the [content-gap report](#follow-up-question-coverage) and community
 contributions matter most.
@@ -142,6 +143,7 @@ the question content itself.
 | [DevOps Interview Guide](https://devopsinterviewkb.com/guides/devops-interview-guide) | Umbrella guide spanning every domain in the bank |
 | [Kubernetes Interview Guide](https://devopsinterviewkb.com/guides/kubernetes-interview-guide) | Kubernetes and Helm |
 | [AWS DevOps Interview Guide](https://devopsinterviewkb.com/guides/aws-devops-interview-guide) | AWS |
+| [Azure DevOps Interview Guide](https://devopsinterviewkb.com/guides/azure-devops-interview-guide) | Azure |
 | [Terraform Interview Guide](https://devopsinterviewkb.com/guides/terraform-interview-guide) | Terraform |
 | [GCP Interview Guide](https://devopsinterviewkb.com/guides/gcp-interview-guide) | GCP |
 

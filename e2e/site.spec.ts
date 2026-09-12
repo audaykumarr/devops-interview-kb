@@ -16,7 +16,7 @@ test.describe("DevOps Interview Knowledge Base", () => {
 
   test("homepage shows the total question count and links to Guides and Practice as distinct entry points", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByText(/^576 original, scenario-driven/)).toBeVisible();
+    await expect(page.getByText(/^600 original, scenario-driven/)).toBeVisible();
     const guidesCard = page.getByRole("link", { name: /Learn with a Guide/ });
     await expect(guidesCard).toHaveAttribute("href", "/guides");
     const practiceCard = page.getByRole("link", { name: /Jump into Practice/ });
@@ -438,7 +438,7 @@ test.describe("DevOps Interview Knowledge Base", () => {
     await expect(page.getByText("Nothing marked for review with these filters.")).toBeVisible();
   });
 
-  test("guides landing page loads and links to all five guides", async ({ page }) => {
+  test("guides landing page loads and links to all six guides", async ({ page }) => {
     const response = await page.goto("/guides");
     expect(response?.status()).toBe(200);
     await expect(page.getByRole("heading", { name: "DevOps Interview Guides" })).toBeVisible();
@@ -446,6 +446,8 @@ test.describe("DevOps Interview Knowledge Base", () => {
     await expect(page.locator('a[href="/guides/kubernetes-interview-guide"]')).toBeVisible();
     await expect(page.getByRole("heading", { name: "AWS DevOps Interview Guide" })).toBeVisible();
     await expect(page.locator('a[href="/guides/aws-devops-interview-guide"]')).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Azure DevOps Interview Guide" })).toBeVisible();
+    await expect(page.locator('a[href="/guides/azure-devops-interview-guide"]')).toBeVisible();
     await expect(page.getByRole("heading", { name: "Terraform Interview Guide" })).toBeVisible();
     await expect(page.locator('a[href="/guides/terraform-interview-guide"]')).toBeVisible();
     await expect(page.getByRole("heading", { name: "GCP Interview Guide" })).toBeVisible();
@@ -454,12 +456,12 @@ test.describe("DevOps Interview Knowledge Base", () => {
     await expect(page.locator('a[href="/guides/devops-interview-guide"]')).toBeVisible();
   });
 
-  test("guides landing page visually separates the umbrella DevOps Guide (Start Here) from the four focused technology guides", async ({ page }) => {
+  test("guides landing page visually separates the umbrella DevOps Guide (Start Here) from the five focused technology guides", async ({ page }) => {
     await page.goto("/guides");
     const startHere = page.locator("div").filter({ has: page.getByRole("heading", { level: 2, name: "Start Here" }) }).last();
     await expect(startHere).toBeVisible();
     await expect(startHere.getByRole("heading", { level: 3, name: "DevOps Interview Guide", exact: true })).toBeVisible();
-    // The four single-technology guides must NOT appear inside Start Here.
+    // The five single-technology guides must NOT appear inside Start Here.
     await expect(startHere.getByRole("heading", { level: 3, name: "Kubernetes Interview Guide" })).toHaveCount(0);
 
     const focused = page
@@ -467,7 +469,7 @@ test.describe("DevOps Interview Knowledge Base", () => {
       .filter({ has: page.getByRole("heading", { level: 2, name: "Focused Technology Guides" }) })
       .last();
     await expect(focused).toBeVisible();
-    for (const name of ["Kubernetes Interview Guide", "AWS DevOps Interview Guide", "Terraform Interview Guide", "GCP Interview Guide"]) {
+    for (const name of ["Kubernetes Interview Guide", "AWS DevOps Interview Guide", "Azure DevOps Interview Guide", "Terraform Interview Guide", "GCP Interview Guide"]) {
       await expect(focused.getByRole("heading", { level: 3, name })).toBeVisible();
     }
     await expect(focused.getByRole("heading", { level: 3, name: "DevOps Interview Guide", exact: true })).toHaveCount(0);
@@ -1056,7 +1058,7 @@ test.describe("DevOps Interview Knowledge Base", () => {
     }
   });
 
-  test("GCP guide appears on the Guides landing page under Focused Technology Guides, alongside 5 guides total", async ({
+  test("GCP guide appears on the Guides landing page under Focused Technology Guides, alongside 6 guides total", async ({
     page,
   }) => {
     await page.goto("/guides");
@@ -1064,10 +1066,145 @@ test.describe("DevOps Interview Knowledge Base", () => {
     const focused = page.locator("h2", { hasText: "Focused Technology Guides" }).locator("xpath=..");
 
     await expect(startHere.locator('a[href="/guides/devops-interview-guide"]')).toBeVisible();
-    for (const slug of ["aws-devops-interview-guide", "kubernetes-interview-guide", "terraform-interview-guide", "gcp-interview-guide"]) {
+    for (const slug of ["aws-devops-interview-guide", "azure-devops-interview-guide", "kubernetes-interview-guide", "terraform-interview-guide", "gcp-interview-guide"]) {
       await expect(focused.locator(`a[href="/guides/${slug}"]`)).toBeVisible();
     }
-    await expect(page.locator('a[href^="/guides/"][href$="-guide"]')).toHaveCount(5);
+    await expect(page.locator('a[href^="/guides/"][href$="-guide"]')).toHaveCount(6);
+  });
+
+  test("Azure guide detail page loads with all required sections and structured data", async ({ page }) => {
+    const response = await page.goto("/guides/azure-devops-interview-guide");
+    expect(response?.status()).toBe(200);
+    await expect(page.getByRole("heading", { level: 1, name: "Azure DevOps Interview Guide" })).toBeVisible();
+
+    for (const heading of [
+      "Who This Guide Is For",
+      "Prerequisites",
+      "Learning / Interview Path",
+      "Key Concepts",
+      "Interview Focus",
+      "Practice Questions",
+      "Scenario & Troubleshooting Focus",
+      "Common Mistakes",
+      "Recommended Preparation Path",
+      "Related Guides",
+    ]) {
+      await expect(page.getByRole("heading", { level: 2, name: heading })).toBeVisible();
+    }
+
+    await expect(page.getByText("34 linked questions")).toBeVisible();
+
+    const jsonLdTypes = await page.locator('script[type="application/ld+json"]').allTextContents();
+    const types = jsonLdTypes.map((json) => JSON.parse(json)["@type"]);
+    expect(types).toContain("BreadcrumbList");
+    expect(types).toContain("TechArticle");
+
+    // Cross-link to the Kubernetes guide via related_guides.
+    await expect(page.locator('a[href="/guides/kubernetes-interview-guide"]')).toBeVisible();
+  });
+
+  test("Azure guide's By Subcategory has exactly 4 cards (Identity & Networking, Compute, Storage, AKS), ordered per its Learning Path, with correct counts", async ({
+    page,
+  }) => {
+    await page.goto("/guides/azure-devops-interview-guide");
+    const cardHeadings = page.getByRole("heading", { level: 4 });
+    await expect(cardHeadings).toHaveCount(4);
+    await expect(cardHeadings.nth(0)).toHaveText("Identity And Networking");
+    await expect(cardHeadings.nth(1)).toHaveText("Compute");
+    await expect(cardHeadings.nth(2)).toHaveText("Storage");
+    await expect(cardHeadings.nth(3)).toHaveText("AKS");
+
+    for (const [name, count] of [
+      ["Identity And Networking", 10],
+      ["Compute", 8],
+      ["Storage", 7],
+      ["AKS", 9],
+    ] as const) {
+      const card = page.locator("div.rounded-lg").filter({ has: page.getByRole("heading", { level: 4, name }) });
+      await expect(card.getByText(String(count), { exact: true })).toBeVisible();
+      await expect(card.getByRole("link", { name: new RegExp(`View all ${count} questions`) })).toBeVisible();
+    }
+  });
+
+  test("Azure guide's subcategory card links navigate to a correctly filtered Azure category page", async ({ page }) => {
+    await page.goto("/guides/azure-devops-interview-guide");
+    const storageCard = page.locator("div.rounded-lg").filter({ has: page.getByRole("heading", { level: 4, name: "Storage" }) });
+    await storageCard.getByRole("link", { name: /View all 7 questions/ }).click();
+    await expect(page).toHaveURL(/\/azure\?subcategory=storage/);
+    const results = page.locator("a[href^='/questions/azure/storage/']");
+    await expect(results.first()).toBeVisible();
+    await expect(results).toHaveCount(7);
+  });
+
+  test("Azure guide's Must Practice section has 8 real, distinct question links covering all 4 subcategories", async ({ page }) => {
+    await page.goto("/guides/azure-devops-interview-guide");
+    const mustPracticeLinks = page
+      .locator("h3", { hasText: "Must Practice" })
+      .locator("xpath=following-sibling::ul[1]//a");
+    await expect(mustPracticeLinks).toHaveCount(8);
+    const hrefs = await mustPracticeLinks.evaluateAll((links) => links.map((l) => l.getAttribute("href")));
+    expect(new Set(hrefs).size).toBe(8);
+    for (const href of hrefs) expect(href).toMatch(/^\/questions\/azure\//);
+    for (const sub of ["identity-and-networking", "compute", "storage", "aks"]) {
+      expect(hrefs.some((h) => h!.startsWith(`/questions/azure/${sub}/`))).toBe(true);
+    }
+  });
+
+  test("Azure guide's Prepare by Interview Level shows only levels with actual Azure questions", async ({ page }) => {
+    await page.goto("/guides/azure-devops-interview-guide");
+    const levelSection = page.locator("#prepare-by-level");
+    for (const level of ["Junior DevOps", "Devops Engineer", "Senior Devops", "Cloud Engineer", "Devsecops", "Staff / Principal"]) {
+      await expect(levelSection.getByRole("link", { name: new RegExp(level, "i") })).toBeVisible();
+    }
+    // No SRE or Platform Engineer questions exist for Azure.
+    await expect(levelSection.getByRole("link", { name: /^SRE/i })).toHaveCount(0);
+    await expect(levelSection.getByRole("link", { name: /Platform Engineer/i })).toHaveCount(0);
+  });
+
+  test("Azure guide's By Difficulty and By Question Type reflect the actual corpus", async ({ page }) => {
+    await page.goto("/guides/azure-devops-interview-guide");
+    const difficultySection = page.locator("#by-difficulty");
+    for (const level of [/^Beginner/, /Intermediate/, /Advanced/, /^Expert/]) {
+      await expect(difficultySection.getByRole("link", { name: level })).toBeVisible();
+    }
+
+    const typeSection = page.locator("#by-question-type");
+    for (const type of [/Troubleshooting/, /Comparison/, /Architecture/, /^Security/, /Practical/, /Scenario/, /Conceptual/]) {
+      await expect(typeSection.getByRole("link", { name: type })).toBeVisible();
+    }
+  });
+
+  test("Azure guide renders correctly at mobile viewports with no horizontal overflow", async ({ page }) => {
+    for (const viewport of [
+      { width: 375, height: 812 },
+      { width: 390, height: 844 },
+      { width: 412, height: 915 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto("/guides/azure-devops-interview-guide");
+      const [scrollWidth, clientWidth] = await page.evaluate(() => [
+        document.documentElement.scrollWidth,
+        document.documentElement.clientWidth,
+      ]);
+      expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
+      await expect(page.getByRole("heading", { level: 4, name: "AKS" })).toBeVisible();
+    }
+  });
+
+  test("Azure guide stays within the max-width container at 1280px and 1440px", async ({ page }) => {
+    for (const width of [1280, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/guides/azure-devops-interview-guide");
+      const mainBox = await page.locator("main").boundingBox();
+      expect(mainBox).not.toBeNull();
+      expect(mainBox!.width).toBeLessThanOrEqual(1153);
+    }
+  });
+
+  test("Azure guide appears on the Guides landing page under Focused Technology Guides", async ({ page }) => {
+    await page.goto("/guides");
+    const focused = page.locator("h2", { hasText: "Focused Technology Guides" }).locator("xpath=..");
+    await expect(focused.locator('a[href="/guides/azure-devops-interview-guide"]')).toBeVisible();
   });
 
   test("DevOps guide detail page loads with all required sections and structured data", async ({ page }) => {
@@ -1090,20 +1227,21 @@ test.describe("DevOps Interview Knowledge Base", () => {
       await expect(page.getByRole("heading", { level: 2, name: heading })).toBeVisible();
     }
 
-    await expect(page.getByText("566 linked questions")).toBeVisible();
+    await expect(page.getByText("590 linked questions")).toBeVisible();
 
     const jsonLdTypes = await page.locator('script[type="application/ld+json"]').allTextContents();
     const types = jsonLdTypes.map((json) => JSON.parse(json)["@type"]);
     expect(types).toContain("BreadcrumbList");
     expect(types).toContain("TechArticle");
 
-    // Cross-links to all four existing single-technology guides, resolved via related_guides
+    // Cross-links to all five existing single-technology guides, resolved via related_guides
     // into the dedicated Related Guides card list (in addition to any inline prose links above it).
     const relatedGuidesSection = page.locator("section", {
       has: page.getByRole("heading", { level: 2, name: "Related Guides" }),
     });
     await expect(relatedGuidesSection.locator('a[href="/guides/kubernetes-interview-guide"]').last()).toBeVisible();
     await expect(relatedGuidesSection.locator('a[href="/guides/aws-devops-interview-guide"]').last()).toBeVisible();
+    await expect(relatedGuidesSection.locator('a[href="/guides/azure-devops-interview-guide"]').last()).toBeVisible();
     await expect(relatedGuidesSection.locator('a[href="/guides/terraform-interview-guide"]').last()).toBeVisible();
     await expect(relatedGuidesSection.locator('a[href="/guides/gcp-interview-guide"]').last()).toBeVisible();
   });
@@ -1125,7 +1263,7 @@ test.describe("DevOps Interview Knowledge Base", () => {
       ["Containers", 29],
       ["Orchestration", 142],
       ["Infrastructure as Code", 40],
-      ["Cloud", 96],
+      ["Cloud", 120],
       ["Security", 24],
       ["Observability & SRE", 34],
       ["GitOps", 23],
@@ -1145,7 +1283,7 @@ test.describe("DevOps Interview Knowledge Base", () => {
       const card = domainSection.locator("div.rounded-lg").filter({ has: page.getByRole("heading", { level: 4, name }) });
       await expect(card.getByText(String(count), { exact: true })).toBeVisible();
     }
-    expect(total).toBe(566);
+    expect(total).toBe(590);
   });
 
   test("DevOps guide's domain cards list constituent categories, each linking to its own existing category page — no /domain/ route exists", async ({ page }) => {
@@ -1223,14 +1361,14 @@ test.describe("DevOps Interview Knowledge Base", () => {
     const typeSection = page.locator("#by-question-type");
     const troubleshootingLink = typeSection.getByRole("link", { name: /Troubleshooting/ });
     await expect(troubleshootingLink).toHaveAttribute("href", "/type/troubleshooting");
-    await expect(troubleshootingLink).toContainText("130");
+    await expect(troubleshootingLink).toContainText("141");
   });
 
-  test("DevOps guide's Scenario & Troubleshooting Focus distinguishes the 4-question Troubleshooting domain from the 130-question cross-cutting troubleshooting type", async ({ page }) => {
+  test("DevOps guide's Scenario & Troubleshooting Focus distinguishes the 4-question Troubleshooting domain from the 141-question cross-cutting troubleshooting type", async ({ page }) => {
     await page.goto("/guides/devops-interview-guide");
     const section = page.locator("section", { has: page.getByRole("heading", { level: 2, name: "Scenario & Troubleshooting Focus" }) });
     await expect(section.getByText("4", { exact: true })).toBeVisible();
-    await expect(section.getByText("130", { exact: true })).toBeVisible();
+    await expect(section.getByText("141", { exact: true })).toBeVisible();
   });
 
   test("DevOps guide renders correctly at mobile viewports with no horizontal overflow", async ({ page }) => {
@@ -1286,7 +1424,7 @@ test.describe("DevOps Interview Knowledge Base", () => {
       await expect(page.getByRole("heading", { level: 2, name: heading })).toBeVisible();
     }
 
-    await expect(page.getByText("528 linked questions")).toBeVisible();
+    await expect(page.getByText("552 linked questions")).toBeVisible();
 
     const jsonLdTypes = await page.locator('script[type="application/ld+json"]').allTextContents();
     const types = jsonLdTypes.map((json) => JSON.parse(json)["@type"]);
@@ -1306,7 +1444,7 @@ test.describe("DevOps Interview Knowledge Base", () => {
       ["CI/CD", 44],
       ["Orchestration", 142],
       ["Infrastructure as Code", 40],
-      ["Cloud Platforms", 96],
+      ["Cloud Platforms", 120],
       ["Security Fundamentals", 24],
       ["Observability Fundamentals", 24],
       ["GitOps & Modern Delivery", 23],
@@ -1331,10 +1469,10 @@ test.describe("DevOps Interview Knowledge Base", () => {
     }
   });
 
-  test("roadmap distinguishes /troubleshooting (this stage's own 4 questions) from the 130-question cross-cutting /type/troubleshooting", async ({ page }) => {
+  test("roadmap distinguishes /troubleshooting (this stage's own 4 questions) from the 141-question cross-cutting /type/troubleshooting", async ({ page }) => {
     await page.goto("/roadmaps/devops-engineer-roadmap");
     const stageCard = page.locator("#production-readiness");
-    await expect(stageCard.getByText("130", { exact: false })).toBeVisible();
+    await expect(stageCard.getByText("141", { exact: false })).toBeVisible();
     await expect(stageCard.locator('a[href="/type/troubleshooting"]')).toBeVisible();
   });
 
@@ -1636,6 +1774,7 @@ test.describe("DevOps Interview Knowledge Base", () => {
     expect(sitemapBody).toContain("/guides</loc>");
     expect(sitemapBody).toContain("/guides/kubernetes-interview-guide</loc>");
     expect(sitemapBody).toContain("/guides/aws-devops-interview-guide</loc>");
+    expect(sitemapBody).toContain("/guides/azure-devops-interview-guide</loc>");
     expect(sitemapBody).toContain("/guides/terraform-interview-guide</loc>");
     expect(sitemapBody).toContain("/guides/gcp-interview-guide</loc>");
     expect(sitemapBody).toContain("/guides/devops-interview-guide</loc>");

@@ -25,11 +25,18 @@ export function loadRoadmapSchemaAndTaxonomy(rootDir: string): {
 
 export function loadRawRoadmaps(rootDir: string): RawQuestionFile[] {
   const roadmapsDir = join(rootDir, "content", "roadmaps");
+  let files: string[];
   try {
-    return findMarkdownFiles(roadmapsDir).map((file) => loadQuestionFile(file, rootDir));
-  } catch {
-    return [];
+    files = findMarkdownFiles(roadmapsDir);
+  } catch (err) {
+    // A missing content/roadmaps directory is a legitimate "no roadmaps yet" state.
+    // Any other error (permissions, etc.) is a real problem and must not be swallowed.
+    if (err instanceof Error && "code" in err && err.code === "ENOENT") return [];
+    throw err;
   }
+  // Outside the try/catch above: a malformed roadmap file's YAML/frontmatter error
+  // must propagate and fail loudly, not be silently reported as "no roadmaps found".
+  return files.map((file) => loadQuestionFile(file, rootDir));
 }
 
 /** Loads and validates the roadmap corpus (and, transitively, the question and guide corpora for cross-reference checks); prints an error and exits on any validation failure. */
